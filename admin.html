@@ -1,1 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Jayena – Admin</title>
+<style>
+  :root{--bg:#f7f7fb;--panel:#fff;--muted:#6b7280;--text:#111827;--accent:#0ea5e9;--brd:rgba(17,24,39,.12)}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .card{background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px}
+  .grid{display:grid;gap:12px}
+  @media(min-width:900px){.grid.cols-2{grid-template-columns:1.2fr .8fr}}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  select,input{padding:8px 10px;border:1px solid var(--brd);border-radius:10px}
+  h2{margin:8px 0 4px 0;font-size:18px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-top:1px solid var(--brd);padding:8px;text-align:left}
+  th{font-weight:700}
+  .muted{color:var(--muted)}
+  .pill{background:rgba(56,189,248,.12);border:1px dashed rgba(56,189,248,.35);color:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px}
+  .totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media(min-width:700px){.totals{grid-template-columns:repeat(4,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px}
+  .kpi strong{font-size:18px}
+  .chart{width:100%;max-width:520px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="row">
+      <h1 style="margin:0">Jayena – Panel Admin</h1>
+      <span class="pill">solo lectura</span>
+    </div>
+    <div class="row">
+      <select id="rangeSel">
+        <option value="today">Hoy</option>
+        <option value="month">Este mes</option>
+        <option value="custom">Personalizado…</option>
+      </select>
+      <input id="fromDate" type="date" style="display:none"/>
+      <input id="toDate" type="date" style="display:none"/>
+      <button id="reloadBtn">Actualizar</button>
+    </div>
+  </header>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <h2>Resumen</h2>
+      <div class="totals">
+        <div class="kpi"><div class="muted">Unidades totales</div><strong id="kpiUnits">0</strong></div>
+        <div class="kpi"><div class="muted">Importe total (€)</div><strong id="kpiAmount">0,00</strong></div>
+        <div class="kpi"><div class="muted">Rondas</div><strong id="kpiRounds">0</strong></div>
+        <div class="kpi"><div class="muted">Usuarios (distintos)</div><strong id="kpiUsers">0</strong></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Por bebida (€)</h2>
+      <div class="row">
+        <svg id="pie" class="chart" viewBox="0 0 240 240"></svg>
+      </div>
+      <div id="legend" class="muted" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+    <div class="card">
+      <h2>Por usuario</h2>
+      <table id="byUser"><thead><tr><th>Usuario</th><th>Unidades</th><th>Importe (€)</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Por bebida</h2>
+      <table id="byDrink"><thead><tr><th>Bebida</th><th>Unidades</th><th>Importe (€)</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Por día</h2>
+      <table id="byDay"><thead><tr><th>Fecha</th><th>Unidades</th><th>Importe (€)</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Rondas (detalle)</h2>
+      <table id="rounds"><thead><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Unid.</th><th>Importe (€)</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs",
+  authDomain: "jayena-drinks.firebaseapp.com",
+  projectId: "jayena-drinks",
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// catálogo bebidas + precios (igual que el front)
+const DRINKS = [
+  { key:'cerveza', label:'🍺 Cerveza', price:1.90, color:'#60a5fa' },
+  { key:'agua',    label:'💧 Agua',    price:1.90, color:'#34d399' },
+  { key:'aguaGas', label:'🫧 Agua con gas', price:2.10, color:'#a78bfa' },
+  { key:'gaseosa', label:'🥤 Gaseosa', price:2.10, color:'#f59e0b' },
+  { key:'vino',    label:'🍷 Vino',    price:2.10, color:'#ef4444' },
+];
+const D = Object.fromEntries(DRINKS.map(d=>[d.key,d]));
+
+const money = n => (n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt = d => d.toISOString().slice(0,10);
+const todayLocal = ()=>{const d=new Date();d.setHours(0,0,0,0);return d;}
+const monthStart = ()=>{const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;}
+
+const rangeSel = document.getElementById('rangeSel');
+const fromDate = document.getElementById('fromDate');
+const toDate   = document.getElementById('toDate');
+const reloadBtn= document.getElementById('reloadBtn');
+
+function setRangeUI(){
+  const now=todayLocal(); fromDate.value = fmt(now);
+  toDate.value = fmt(now);
+  fromDate.style.display = toDate.style.display = (rangeSel.value==='custom')?'inline-block':'none';
+}
+
+rangeSel.addEventListener('change', ()=>{
+  if(rangeSel.value==='today'){
+    const t=todayLocal(); fromDate.value=fmt(t); toDate.value=fmt(t);
+  }
+  if(rangeSel.value==='month'){
+    const s=monthStart(), e=todayLocal();
+    fromDate.value=fmt(s); toDate.value=fmt(e);
+  }
+  setRangeUI();
+});
+
+reloadBtn.addEventListener('click', load);
+
+async function load(){
+  // Determinar rango de días (fechas YYYY-MM-DD)
+  let start = fromDate.value, end = toDate.value;
+  if(rangeSel.value==='today'){ const t=fmt(todayLocal()); start=end=t; }
+  if(rangeSel.value==='month'){ start=fmt(monthStart()); end=fmt(todayLocal()); }
+  if(!start || !end){ alert('Selecciona rango válido'); return; }
+
+  // Construir lista de fechas
+  const days = [];
+  let d=new Date(start+'T00:00:00');
+  const last=new Date(end+'T00:00:00');
+  while(d<=last){ days.push(fmt(d)); d.setDate(d.getDate()+1); }
+
+  // Leer Firestore por día (colecciones anidadas)
+  const allRounds = [];
+  for (const ds of days){
+    const qRef = query(collection(db,'days',ds,'rounds'), orderBy('createdAt','asc'));
+    const snap = await getDocs(qRef);
+    snap.forEach(doc=>{
+      const r=doc.data();
+      if(r.deleted) return;
+      allRounds.push({date: ds, ...r});
+    });
+  }
+
+  // Agregaciones
+  let totalUnits=0,totalAmount=0; const users=new Set();
+  const byUser = {}; const byDrink={}; const byDay={}; const rounds=[];
+  for(const r of allRounds){
+    // totales de la ronda
+    let u=0,a=0;
+    for(const k of Object.keys(D)){
+      const q = r.items?.[k]||0;
+      u+=q; a+= q*D[k].price;
+      if(q>0){
+        byDrink[k] = byDrink[k]||{qty:0,amt:0};
+        byDrink[k].qty += q;
+        byDrink[k].amt += q*D[k].price;
+      }
+    }
+    totalUnits+=u; totalAmount+=a;
+    if(r.displayName) users.add(r.displayName);
+    // por usuario
+    const user = r.displayName||'¿?';
+    byUser[user] = byUser[user]||{qty:0,amt:0};
+    byUser[user].qty += u; byUser[user].amt += a;
+    // por día
+    byDay[r.date] = byDay[r.date]||{qty:0,amt:0};
+    byDay[r.date].qty += u; byDay[r.date].amt += a;
+    // detalle de rondas
+    const ts = r.createdAt?.toDate ? r.createdAt.toDate() : new Date();
+    rounds.push({
+      date: r.date,
+      time: ts.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
+      user: user, units: u, amount: a
+    });
+  }
+
+  // KPIs
+  document.getElementById('kpiUnits').textContent = String(totalUnits);
+  document.getElementById('kpiAmount').textContent = money(totalAmount);
+  document.getElementById('kpiRounds').textContent = String(allRounds.length);
+  document.getElementById('kpiUsers').textContent  = String(users.size);
+
+  // Tablas
+  const tbodyUser = document.querySelector('#byUser tbody'); tbodyUser.innerHTML='';
+  Object.entries(byUser).sort((a,b)=>b[1].amt - a[1].amt).forEach(([name,v])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
+    tbodyUser.appendChild(tr);
+  });
+
+  const tbodyDrink = document.querySelector('#byDrink tbody'); tbodyDrink.innerHTML='';
+  Object.keys(D).forEach(k=>{
+    const v=byDrink[k]; if(!v) return;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${D[k].label}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
+    tbodyDrink.appendChild(tr);
+  });
+
+  const tbodyDay = document.querySelector('#byDay tbody'); tbodyDay.innerHTML='';
+  Object.entries(byDay).sort(([da],[db])=> da<db ? -1: 1).forEach(([d,v])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${d}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
+    tbodyDay.appendChild(tr);
+  });
+
+  const tbodyRounds = document.querySelector('#rounds tbody'); tbodyRounds.innerHTML='';
+  rounds.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.date}</td><td>${r.time}</td><td>${r.user}</td><td>${r.units}</td><td>${money(r.amount)}</td>`;
+    tbodyRounds.appendChild(tr);
+  });
+
+  // Pie (€ por bebida)
+  const used = Object.entries(byDrink).map(([k,v])=>({key:k, ...v})).filter(x=>x.amt>0);
+  const svg=document.getElementById('pie'); svg.innerHTML='';
+  document.getElementById('legend').innerHTML='';
+  if(used.length){
+    const size=240,cx=120,cy=120,r=100; let acc=0; const total=used.reduce((s,x)=>s+x.amt,0);
+    used.forEach(x=>{
+      const frac=x.amt/total, ang=frac*2*Math.PI;
+      const x1=cx + r*Math.cos(acc), y1=cy + r*Math.sin(acc);
+      const acc2=acc+ang; const x2=cx + r*Math.cos(acc2), y2=cy + r*Math.sin(acc2);
+      const large= ang>Math.PI ? 1:0;
+      const path=`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+      const color=D[x.key].color;
+      const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d',path); p.setAttribute('fill',color); p.setAttribute('stroke','#fff'); p.setAttribute('stroke-width','2');
+      svg.appendChild(p);
+      acc=acc2;
+
+      const d = D[x.key];
+      const div=document.createElement('div');
+      div.innerHTML = `${d.label}: <strong>${money(x.amt)} €</strong> (${x.qty} uds)`;
+      document.getElementById('legend').appendChild(div);
+    });
+  } else {
+    document.getElementById('legend').textContent='Sin consumo en el rango.';
+  }
+}
+
+// init rango = Hoy
+(function init(){
+  const t=todayLocal(); fromDate.value=fmt(t); toDate.value=fmt(t);
+  setRangeUI(); load();
+})();
+</script>
+</body>
+</html>
 
