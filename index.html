@@ -86,6 +86,23 @@
     a{color:var(--accent)}
     .banner{margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fff0f0;color:#7f1d1d;display:none}
     [data-theme="dark"] .banner{background:#451a1a;color:#fecaca;border-color:#7f1d1d}
+      /* Dashboard responsive */
+    .dashboard-grid{display:grid;gap:12px;align-items:center}
+    .dashboard-legend{display:block}
+    .dashboard-chartwrap{width:100%;max-width:420px}
+    .dashboard-chartwrap svg{width:100%;height:auto}
+    /* Desktop: lista a la izquierda, gráfico a la derecha */
+    @media(min-width:720px){
+      .dashboard-grid{grid-template-columns:1fr 280px}
+      .dashboard-legend{order:1}
+      .dashboard-chartwrap{order:2;justify-self:center}
+    }
+    /* Móvil: primero lista, luego gráfico */
+    @media(max-width:719px){
+      .dashboard-grid{grid-template-columns:1fr}
+      .dashboard-legend{order:1}
+      .dashboard-chartwrap{order:2}
+    }
   </style>
 </head>
 <body>
@@ -159,7 +176,7 @@
 
     <footer>
       Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore<br/>
-      Creado por Chatty y Nick v2.1
+      Creado por Chatty y Nick v2.4
     </footer>
   </div>
 
@@ -303,8 +320,12 @@
       const size=240, r=100, cx=120, cy=120; let acc=0;
       const arcs = used.map((s)=>{ const val=s.amt; const frac=val/total; const angle=frac*2*Math.PI; const x1=cx + r*Math.cos(acc); const y1=cy + r*Math.sin(acc); const acc2=acc+angle; const x2=cx + r*Math.cos(acc2); const y2=cy + r*Math.sin(acc2); const large= angle>Math.PI ? 1:0; const path=`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`; const color=palette[s.key]||'#38bdf8'; acc=acc2; return {path,color,s}; });
       const svgParts = arcs.map(a=>`<path d="${a.path}" fill="${a.color}" stroke="#fff" stroke-width="2"/>`).join('');
-      const legend = used.map(s=>`<div class="total-line"><span><span style=\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
-      dashboardEl.innerHTML = `<div style="display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:center"><svg viewBox="0 0 ${size} ${size}" width="100%" height="100%">${svgParts}</svg><div>${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div></div>`;
+      const legend = used.map(s=>`<div class=\"total-line\"><span><span style=\\\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\\\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      dashboardEl.innerHTML = `
+        <div class="dashboard-grid">
+          <div class="dashboard-legend">${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div>
+          <div class="dashboard-chartwrap"><svg viewBox="0 0 ${size} ${size}">${svgParts}</svg></div>
+        </div>`;
     }
 
     function renderFriday(dateStr){ const fri=isFriday(dateStr); fridayBadge.style.opacity=fri?1:.5; fridayBadge.textContent=fri?'Viernes en Jayena':'Otro día (no viernes)'; }
