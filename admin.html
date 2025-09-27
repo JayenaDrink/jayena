@@ -12,7 +12,8 @@
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .card{background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px}
     .grid{display:grid;gap:12px}
-    @media(min-width:900px){.grid.cols-2{grid-template-columns:1.2fr .8fr}}
+    .grid.cols-2{grid-template-columns:1.2fr .8fr}
+    @media(max-width:700px){.grid.cols-2{grid-template-columns:1fr}}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     select,input,button{padding:8px 10px;border:1px solid var(--brd);border-radius:10px;background:#fff;color:var(--text)}
     [data-theme="dark"] select,[data-theme="dark"] input,[data-theme="dark"] button{background:#0f172a;color:var(--text)}
@@ -66,10 +67,6 @@
       <div class="totals">
         <div class="kpi"><div class="muted">Unidades totales</div><strong id="kpiUnits">0</strong></div>
         <div class="kpi"><div class="muted">Importe total (€)</div><strong id="kpiAmount">0,00</strong></div>
-      </div><strong id="kpiUnits">0</strong></div>
-        <div class="kpi"><div class="muted">Importe total (€)</div><strong id="kpiAmount">0,00</strong></div>
-        <div class="kpi"><div class="muted">Rondas</div><strong id="kpiRounds">0</strong></div>
-        <div class="kpi"><div class="muted">Usuarios (distintos)</div><strong id="kpiUsers">0</strong></div>
       </div>
     </div>
     <div class="card">
