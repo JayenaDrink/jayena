@@ -155,6 +155,27 @@
     </footer>
   </div>
 
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // TU CONFIG (la misma que me pasaste)
+  const firebaseConfig = {
+    apiKey: "AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs",
+    authDomain: "jayena-drinks.firebaseapp.com",
+    projectId: "jayena-drinks",
+    storageBucket: "jayena-drinks.firebasestorage.app",
+    messagingSenderId: "284828851495",
+    appId: "1:284828851495:web:d6bff8d491e42b3fba9d02"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  // Expongo Firestore y Timestamp como globals para el script no-módulo
+  window.__db = getFirestore(app);
+  window.__FBTimestamp = Timestamp;
+</script>
+
+
   <script>
   ;(()=>{
     const DRINKS = [
