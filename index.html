@@ -7,23 +7,10 @@
   <meta name="theme-color" content="#0ea5e9" />
   <style>
     :root{
-      --bg:#f7f7fb;
-      --panel:#ffffff;
-      --muted:#6b7280;
-      --text:#111827;
-      --accent:#0ea5e9;
-      --accent-2:#38bdf8;
-      --ok:#10b981;
-      --danger:#ef4444;
-      --shadow: 0 10px 30px rgba(0,0,0,.08);
-      --radius: 18px;
+      --bg:#f7f7fb; --panel:#ffffff; --muted:#6b7280; --text:#111827; --accent:#0ea5e9; --accent-2:#38bdf8; --ok:#10b981; --danger:#ef4444; --shadow:0 10px 30px rgba(0,0,0,.08); --radius:18px;
     }
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial; 
-      background: radial-gradient(1200px 800px at 70% -20%, #dff5ff 0%, transparent 60%),
-                  radial-gradient(900px 700px at -10% 10%, #f3f7ff 0%, transparent 55%),
-                  var(--bg);
-      color:var(--text)}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;background:radial-gradient(1200px 800px at 70% -20%,#dff5ff 0%,transparent 60%),radial-gradient(900px 700px at -10% 10%,#f3f7ff 0%,transparent 55%),var(--bg);color:var(--text)}
     .wrap{max-width:900px;margin:0 auto;padding:clamp(12px,3vw,24px)}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
     .title{display:flex;align-items:center;gap:10px}
@@ -36,7 +23,7 @@
     .row{display:flex;align-items:center;gap:10px}
     .row.wrap{flex-wrap:wrap}
     label{font-size:14px;color:var(--muted)}
-    input[type="text"], select{background:#fff;color:var(--text);border:1px solid rgba(17,24,39,.12);padding:10px 12px;border-radius:12px;outline:none;font-size:14px;box-shadow:inset 0 1px 0 rgba(0,0,0,.02)}
+    select{background:#fff;color:var(--text);border:1px solid rgba(17,24,39,.12);padding:10px 12px;border-radius:12px;outline:none;font-size:14px;box-shadow:inset 0 1px 0 rgba(0,0,0,.02)}
     button{border:0;cursor:pointer}
     .btn{background:rgba(148,163,184,.12);color:var(--text);padding:10px 12px;border-radius:12px;font-weight:600}
     .btn:hover{background:rgba(148,163,184,.18)}
@@ -80,8 +67,12 @@
           <select id="dateSelect"></select>
         </div>
         <div>
-          <div class="section-title">Tu nombre</div>
-          <input id="nameInput" type="text" placeholder="Usr1" />
+          <div class="section-title">Usuario</div>
+          <select id="nameSelect">
+            <option value="Ale">Ale</option>
+            <option value="Nick">Nick</option>
+            <option value="Flor">Flor</option>
+          </select>
         </div>
       </div>
     </div>
@@ -127,7 +118,7 @@
 
     <footer>
       Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore<br/>
-      Creado por Chatty y Nick v2.1
+      Creado por Chatty y Nick v2.4
     </footer>
   </div>
 
@@ -135,10 +126,12 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, Timestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = { apiKey:"AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs",authDomain:"jayena-drinks.firebaseapp.com",projectId:"jayena-drinks",storageBucket:"jayena-drinks.firebasestorage.app",messagingSenderId:"284828851495",appId:"1:284828851495:web:d6bff8d491e42b3fba9d02" };
+    // Firebase
+    const firebaseConfig = { apiKey:"AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs", authDomain:"jayena-drinks.firebaseapp.com", projectId:"jayena-drinks", storageBucket:"jayena-drinks.firebasestorage.app", messagingSenderId:"284828851495", appId:"1:284828851495:web:d6bff8d491e42b3fba9d02" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Data
     const DRINKS=[
       {key:'cerveza',label:'🍺 Cerveza',price:1.90},
       {key:'agua',label:'💧 Agua',price:1.90},
@@ -147,7 +140,7 @@
       {key:'vino',label:'🍷 Vino',price:2.10}
     ];
 
-    // Refs UI
+    // UI refs
     const drinksEl=document.getElementById('drinks');
     const roundsListEl=document.getElementById('roundsList');
     const dateSelect=document.getElementById('dateSelect');
@@ -161,45 +154,45 @@
     const multiplierSelect=document.getElementById('multiplier');
     const closeRoundBtn=document.getElementById('closeRoundBtn');
     const clearRoundBtn=document.getElementById('clearRoundBtn');
-    const nameInput=document.getElementById('nameInput');
+    const nameSelect=document.getElementById('nameSelect');
     const dashboardEl=document.getElementById('dashboard');
 
-    // Identidad local
+    // Identity
     const CLIENT_ID_KEY='jayena-client-id';
     let clientId=localStorage.getItem(CLIENT_ID_KEY);
     if(!clientId){clientId=(crypto?.randomUUID?.()||Math.random().toString(36).slice(2));localStorage.setItem(CLIENT_ID_KEY,clientId)}
     const NAME_KEY='jayena-display-name';
-    nameInput.value=localStorage.getItem(NAME_KEY)||'Usr1';
-    nameInput.addEventListener('input',()=>{const v=nameInput.value.trim()||'Usr1';localStorage.setItem(NAME_KEY,v)});
+    nameSelect.value = localStorage.getItem(NAME_KEY) || 'Ale';
+    nameSelect.addEventListener('change',()=>{ localStorage.setItem(NAME_KEY, nameSelect.value); });
 
-    // Estado
+    // Helpers (fechas locales, no UTC)
+    const fmtDate = (d)=>{
+      const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
+    };
+    const todayLocalStr = ()=> fmtDate(new Date());
+    const isFriday = d => new Date(d+"T00:00:00").getDay()===5; // local
+    const money = n => (n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // State
     let currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{});
-    let unsubscribe=null;let remoteRounds=[];
+    let unsubscribe=null; let remoteRounds=[];
 
-    const money=n=>(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const todayStr=()=> new Date().toISOString().slice(0,10);
-    const isFriday=d=> new Date(d+"T00:00:00").getDay()===5;
-
-    function showError(msg){console.error(msg);errBanner.style.display='block';errBanner.textContent=msg;}
+    function showError(msg){ console.error(msg); errBanner.style.display='block'; errBanner.textContent=msg; }
 
     async function startLive(dateStr){
       try{
         if(unsubscribe){unsubscribe();unsubscribe=null}
         const qRef=query(collection(db,'days',dateStr,'rounds'),orderBy('createdAt','asc'));
-        unsubscribe=onSnapshot(qRef, snap=>{
-          remoteRounds=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-          renderAll();
-        }, err=>{ showError('No se pudo suscribir a Firestore'); console.error(err); });
+        unsubscribe=onSnapshot(qRef, snap=>{ remoteRounds=snap.docs.map(doc=>({id:doc.id,...doc.data()})); renderAll(); }, err=>{ showError('No se pudo suscribir a Firestore'); console.error(err); });
       }catch(e){ showError('Firestore no disponible'); }
     }
 
     function renderDrinks(){
       drinksEl.innerHTML='';
       DRINKS.forEach(d=>{
-        const card=document.createElement('div');
-        card.className='drink';
-        card.innerHTML=`
-          <h3>${d.label}</h3>
+        const card=document.createElement('div'); card.className='drink';
+        card.innerHTML=`<h3>${d.label}</h3>
           <div class="qty">
             <button class="btn-circle" data-key="${d.key}" data-delta="-1">−</button>
             <input type="number" min="0" id="inp-${d.key}" value="${currentRound[d.key]||0}"/>
@@ -208,10 +201,7 @@
         drinksEl.appendChild(card);
       });
       drinksEl.querySelectorAll('.btn-circle').forEach(btn=>{
-        btn.addEventListener('click',e=>{
-          const key=e.currentTarget.dataset.key; const delta=parseInt(e.currentTarget.dataset.delta,10);
-          const v=Math.max(0,(currentRound[key]||0)+delta); currentRound[key]=v; document.getElementById('inp-'+key).value=v;
-        });
+        btn.addEventListener('click',e=>{ const key=e.currentTarget.dataset.key; const delta=parseInt(e.currentTarget.dataset.delta,10); const v=Math.max(0,(currentRound[key]||0)+delta); currentRound[key]=v; document.getElementById('inp-'+key).value=v; });
       });
       DRINKS.forEach(d=>{
         const inp=document.getElementById('inp-'+d.key);
@@ -219,7 +209,7 @@
       });
     }
 
-    function calcRoundTotals(items){ let units=0, amount=0; DRINKS.forEach(d=>{const q=items[d.key]||0; units+=q; amount+=q*d.price;}); return {units,amount}; }
+    function calcRoundTotals(items){ let units=0,amount=0; DRINKS.forEach(d=>{ const q=items[d.key]||0; units+=q; amount+=q*d.price; }); return {units,amount}; }
 
     function renderRounds(day){
       roundsListEl.innerHTML='';
@@ -235,24 +225,16 @@
             <div class="muted">${units} uds · ${money(amount)} € · ${(r.displayName||'Usr?')}</div>
           </div>
           <div class="row">
-            <button class="btn" data-action="restore" data-i="${i}">↺</button>
-            <button class="btn" data-action="dup" data-i="${i}">⧉</button>
             <button class="btn" data-action="softdel" data-i="${i}" style="color:var(--danger)">✕</button>
           </div>`;
         roundsListEl.appendChild(div);
       });
       roundsListEl.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', async e=>{
-          const i=+e.currentTarget.dataset.i; const action=e.currentTarget.dataset.action; const r=list[i]; if(!r) return;
-          if(action==='restore'){ currentRound={...r.items}; renderDrinks(); }
-          if(action==='dup'){
-            try{ await addDoc(collection(db,'days',dateSelect.value,'rounds'),{ items:{...r.items}, clientId, displayName:(nameInput.value.trim()||'Usr1'), createdAt:Timestamp.now() }); }
-            catch(err){ showError('No se pudo duplicar'); console.error(err); }
-          }
-          if(action==='softdel'){
-            try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:(nameInput.value.trim()||'Usr1') }); }
-            catch(err){ showError('No se pudo borrar'); console.error(err); }
-          }
+          const i=+e.currentTarget.dataset.i; const r=list[i]; if(!r) return;
+          if(!confirm('¿Seguro que quieres eliminar esta ronda?')) return;
+          try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:nameSelect.value }); }
+          catch(err){ showError('No se pudo borrar'); console.error(err); }
         });
       });
     }
@@ -261,16 +243,41 @@
       const totals=day.rounds.reduce((acc,r)=>{ const t=calcRoundTotals(r.items); acc.units+=t.units; acc.amount+=t.amount; return acc; },{units:0,amount:0});
       unitsTotalEl.textContent=String(totals.units);
       amountTotalEl.textContent=money(totals.amount);
-      const people=parseInt(peopleSelect.value||'1',10); const per=people>0 ? totals.amount/people : 0; perPersonEl.textContent=money(per);
+      const people=parseInt(peopleSelect.value||'1',10); const per=people>0?(totals.amount/people):0; perPersonEl.textContent=money(per);
       const mult=parseInt(multiplierSelect.value||'1',10); perPersonMultipliedEl.textContent=money(per*mult);
     }
 
+    // Dashboard: Pie chart SVG (solo bebidas consumidas)
     function renderDashboard(day){
-      const sums=DRINKS.map(d=>({key:d.key,label:d.label,qty:0,amt:0}));
+      const sums = DRINKS.map(d=>({ key:d.key, label:d.label, qty:0, amt:0 }));
       day.rounds.forEach(r=>{ DRINKS.forEach((d,idx)=>{ const q=r.items[d.key]||0; sums[idx].qty+=q; sums[idx].amt+=q*d.price; }); });
-      const totalAmt=sums.reduce((a,s)=>a+s.amt,0); const totalQty=sums.reduce((a,s)=>a+s.qty,0);
-      const rows=sums.map(s=>`<div class="total-line"><span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
-      dashboardEl.innerHTML= rows + `<div class="total-line"><span><strong>Total</strong> · ${totalQty} uds</span><strong>${money(totalAmt)} €</strong></div>`;
+      const used = sums.filter(s=> s.qty>0);
+      if(used.length===0){ dashboardEl.innerHTML = '<div class="muted">Sin consumo todavía.</div>'; return; }
+      const total = used.reduce((a,s)=> a+s.amt, 0);
+
+      // Pie geometry
+      const size=220, r=100, cx=110, cy=110, stroke=200; // simple donut
+      let acc=0;
+      const arcs = used.map((s, i)=>{
+        const val = s.amt; const frac = val/total; const angle = frac*2*Math.PI;
+        const x1 = cx + r*Math.cos(acc);
+        const y1 = cy + r*Math.sin(acc);
+        const acc2 = acc + angle;
+        const x2 = cx + r*Math.cos(acc2);
+        const y2 = cy + r*Math.sin(acc2);
+        const large = angle>Math.PI ? 1 : 0;
+        const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+        acc = acc2;
+        return { path, label: s.label, value: s.amt };
+      });
+
+      const svgParts = arcs.map(a=>`<path d="${a.path}" fill="currentColor" opacity="0.85"/>`);
+      const legend = used.map(s=>`<div class="total-line"><span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      dashboardEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:center">
+          <svg viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="color:#38bdf8">${svgParts.join('')}</svg>
+          <div>${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div>
+        </div>`;
     }
 
     function renderFriday(dateStr){ const fri=isFriday(dateStr); fridayBadge.style.opacity=fri?1:.5; fridayBadge.textContent=fri?'Viernes en Jayena':'Otro día (no viernes)'; }
@@ -279,65 +286,45 @@
       const date=dateSelect.value;
       const visible=remoteRounds.filter(r=>!r.deleted);
       const day={ date, rounds: visible.map(r=>({ id:r.id, items:r.items||{}, displayName:r.displayName, ts:r.createdAt?.toMillis?.() ?? Date.now() })) };
-      renderFriday(day.date);
-      renderDrinks();
-      renderRounds(day);
-      renderTotals(day);
-      renderDashboard(day);
+      renderFriday(day.date); renderDrinks(); renderRounds(day); renderTotals(day); renderDashboard(day);
     }
 
-    // Eventos
+    // Events
     dateSelect.addEventListener('change', ()=> startLive(dateSelect.value));
-
     closeRoundBtn.addEventListener('click', async ()=>{
-      const total=Object.values(currentRound).reduce((a,b)=>a+(b||0),0);
-      if(total===0) return;
+      const total=Object.values(currentRound).reduce((a,b)=>a+(b||0),0); if(total===0) return;
       try{
-        await addDoc(collection(db,'days',dateSelect.value,'rounds'),{ items:{...currentRound}, clientId, displayName:(nameInput.value.trim()||'Usr1'), createdAt:Timestamp.now() });
-        currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{});
-        renderDrinks();
+        await addDoc(collection(db,'days',dateSelect.value,'rounds'), { items:{...currentRound}, clientId, displayName:nameSelect.value, createdAt:Timestamp.now() });
+        currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{}); renderDrinks();
       }catch(err){ showError('Error al guardar la ronda'); console.error(err); }
     });
-
     clearRoundBtn.addEventListener('click', ()=>{ currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{}); renderDrinks(); });
 
-    // Selects personas/multiplicador
+    // People & multiplier
     for(let i=1;i<=9;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); peopleSelect.appendChild(o); }
     for(let i=1;i<=5;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); multiplierSelect.appendChild(o); }
-    peopleSelect.addEventListener('change', renderAll);
-    multiplierSelect.addEventListener('change', renderAll);
+    peopleSelect.addEventListener('change', renderAll); multiplierSelect.addEventListener('change', renderAll);
 
-    // Fechas (últimos 180 días hasta fin de 2025)
+    // Populate dates: últimos 180 días hasta fin de 2025 (local, no UTC)
     function populateDateOptions(rangePast=180){
       dateSelect.innerHTML='';
-      const today=new Date(); today.setHours(0,0,0,0);
-      const endOfYear=new Date(2025,11,31); endOfYear.setHours(0,0,0,0);
-      const ms=86400000; const rangeFuture=Math.max(0, Math.round((endOfYear-today)/ms));
+      const today = new Date(); today.setHours(0,0,0,0);
+      const endOfYear = new Date(2025,11,31); endOfYear.setHours(0,0,0,0);
+      const ms=86400000; const rangeFuture=Math.max(0,Math.round((endOfYear - today)/ms));
       for(let off=-rangePast; off<=rangeFuture; off++){
-        const d=new Date(today); d.setDate(today.getDate()+off);
-        const value=d.toISOString().slice(0,10);
-        const label=d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-        const opt=document.createElement('option'); opt.value=value; opt.textContent=label + (d.getDay()===5?' · viernes':'');
+        const d = new Date(today); d.setDate(today.getDate()+off);
+        const value = fmtDate(d);
+        const label = d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+        const opt = document.createElement('option'); opt.value=value; opt.textContent=label + (d.getDay()===5?' · viernes':'');
         dateSelect.appendChild(opt);
       }
     }
 
-    // Tests básicos (consola)
-    function runTests(){
-      try{
-        const t=calcRoundTotals({ cerveza:1, vino:2 }); console.assert(t.units===3,'calcRoundTotals unidades'); console.assert(t.amount.toFixed(2)==='6.10','importe 6.10');
-        console.assert(money(6.1)==='6,10','money es-ES'); console.assert(isFriday('2025-09-26')===true,'isFriday viernes');
-        const all=calcRoundTotals({cerveza:1,agua:1,aguaGas:1,gaseosa:1,vino:1}); console.assert(all.units===5 && all.amount.toFixed(2)==='10.10','totales varias');
-        console.assert(dateSelect.options.length>0,'fecha opciones'); console.log('✅ Tests OK');
-      }catch(e){ console.warn('⚠️ Tests:',e); }
-    }
-
     // Init
     populateDateOptions();
-    dateSelect.value=todayStr();
+    dateSelect.value = todayLocalStr(); // asegura HOY
     startLive(dateSelect.value);
     renderAll();
-    runTests();
   </script>
 </body>
 </html>
