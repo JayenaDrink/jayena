@@ -1,43 +1,46 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Jayena – Admin</title>
-<style>
-  :root{--bg:#f7f7fb;--panel:#fff;--muted:#6b7280;--text:#111827;--accent:#0ea5e9;--brd:rgba(17,24,39,.12)}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--text)}
-  .wrap{max-width:1100px;margin:0 auto;padding:16px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-  .card{background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px}
-  .grid{display:grid;gap:12px}
-  @media(min-width:900px){.grid.cols-2{grid-template-columns:1.2fr .8fr}}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  select,input{padding:8px 10px;border:1px solid var(--brd);border-radius:10px}
-  h2{margin:8px 0 4px 0;font-size:18px}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{border-top:1px solid var(--brd);padding:8px;text-align:left}
-  th{font-weight:700}
-  .muted{color:var(--muted)}
-  .pill{background:rgba(56,189,248,.12);border:1px dashed rgba(56,189,248,.35);color:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px}
-  .totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  @media(min-width:700px){.totals{grid-template-columns:repeat(4,1fr)}}
-  .kpi{background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px}
-  .kpi strong{font-size:18px}
-  .chart{width:100%;max-width:520px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jayena – Admin</title>
+  <style>
+    :root{--bg:#f7f7fb;--panel:#fff;--muted:#6b7280;--text:#111827;--accent:#0ea5e9;--brd:rgba(17,24,39,.12)}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell; background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .card{background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px}
+    .grid{display:grid;gap:12px}
+    @media(min-width:900px){.grid.cols-2{grid-template-columns:1.2fr .8fr}}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    select,input,button{padding:8px 10px;border:1px solid var(--brd);border-radius:10px;background:#fff}
+    button{cursor:pointer;font-weight:600}
+    h1{margin:0;font-size:20px}
+    h2{margin:8px 0 4px 0;font-size:18px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{border-top:1px solid var(--brd);padding:8px;text-align:left}
+    th{font-weight:700}
+    .muted{color:var(--muted)}
+    .pill{background:rgba(56,189,248,.12);border:1px dashed rgba(56,189,248,.35);color:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px}
+    .totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    @media(min-width:700px){.totals{grid-template-columns:repeat(4,1fr)}}
+    .kpi{background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px}
+    .kpi strong{font-size:18px}
+    .chart{width:100%;max-width:520px}
+    #msg{display:none;margin-bottom:10px;padding:10px;border-radius:10px;background:#fff0f0;border:1px solid rgba(239,68,68,.35);color:#7f1d1d}
+  </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="row">
-      <h1 style="margin:0">Jayena – Panel Admin</h1>
+      <h1>Jayena – Panel Admin</h1>
       <span class="pill">solo lectura</span>
     </div>
     <div class="row">
       <select id="rangeSel">
         <option value="today">Hoy</option>
-        <option value="month">Este mes</option>
+        <option value="month" selected>Este mes</option>
         <option value="custom">Personalizado…</option>
       </select>
       <input id="fromDate" type="date" style="display:none"/>
@@ -45,6 +48,8 @@
       <button id="reloadBtn">Actualizar</button>
     </div>
   </header>
+
+  <div id="msg"></div>
 
   <div class="grid cols-2">
     <div class="card">
@@ -108,28 +113,32 @@ const DRINKS = [
 const D = Object.fromEntries(DRINKS.map(d=>[d.key,d]));
 
 const money = n => (n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmt = d => d.toISOString().slice(0,10);
-const todayLocal = ()=>{const d=new Date();d.setHours(0,0,0,0);return d;}
-const monthStart = ()=>{const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;}
+// === IMPORTANTE: fecha local (no toISOString) para que coincida con los IDs YYYY-MM-DD guardados por el front ===
+const fmtLocal = (d)=>{ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; };
+const todayLocal = ()=>{const d=new Date(); d.setHours(0,0,0,0); return d;};
+const monthStart = ()=>{const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;};
 
 const rangeSel = document.getElementById('rangeSel');
 const fromDate = document.getElementById('fromDate');
 const toDate   = document.getElementById('toDate');
 const reloadBtn= document.getElementById('reloadBtn');
+const msgBox   = document.getElementById('msg');
+
+function showMsg(text){ msgBox.textContent=text; msgBox.style.display='block'; }
+function clearMsg(){ msgBox.textContent=''; msgBox.style.display='none'; }
 
 function setRangeUI(){
-  const now=todayLocal(); fromDate.value = fmt(now);
-  toDate.value = fmt(now);
+  const now=todayLocal(); fromDate.value = fmtLocal(now); toDate.value = fmtLocal(now);
   fromDate.style.display = toDate.style.display = (rangeSel.value==='custom')?'inline-block':'none';
 }
 
 rangeSel.addEventListener('change', ()=>{
+  clearMsg();
   if(rangeSel.value==='today'){
-    const t=todayLocal(); fromDate.value=fmt(t); toDate.value=fmt(t);
+    const t=todayLocal(); fromDate.value=fmtLocal(t); toDate.value=fmtLocal(t);
   }
   if(rangeSel.value==='month'){
-    const s=monthStart(), e=todayLocal();
-    fromDate.value=fmt(s); toDate.value=fmt(e);
+    const s=monthStart(), e=todayLocal(); fromDate.value=fmtLocal(s); toDate.value=fmtLocal(e);
   }
   setRangeUI();
 });
@@ -137,35 +146,47 @@ rangeSel.addEventListener('change', ()=>{
 reloadBtn.addEventListener('click', load);
 
 async function load(){
-  // Determinar rango de días (fechas YYYY-MM-DD)
+  clearMsg();
+  // Rango
   let start = fromDate.value, end = toDate.value;
-  if(rangeSel.value==='today'){ const t=fmt(todayLocal()); start=end=t; }
-  if(rangeSel.value==='month'){ start=fmt(monthStart()); end=fmt(todayLocal()); }
-  if(!start || !end){ alert('Selecciona rango válido'); return; }
+  if(rangeSel.value==='today'){ const t=fmtLocal(todayLocal()); start=end=t; }
+  if(rangeSel.value==='month'){ start=fmtLocal(monthStart()); end=fmtLocal(todayLocal()); }
+  if(!start || !end){ showMsg('Selecciona un rango válido.'); return; }
 
-  // Construir lista de fechas
+  // Construir lista de días (YYYY-MM-DD) usando local
   const days = [];
-  let d=new Date(start+'T00:00:00');
-  const last=new Date(end+'T00:00:00');
-  while(d<=last){ days.push(fmt(d)); d.setDate(d.getDate()+1); }
+  let d = new Date(start + 'T00:00:00');
+  const last = new Date(end + 'T00:00:00');
+  while(d<=last){ days.push(fmtLocal(d)); d.setDate(d.getDate()+1); }
 
-  // Leer Firestore por día (colecciones anidadas)
+  // Leer Firestore por día
   const allRounds = [];
-  for (const ds of days){
-    const qRef = query(collection(db,'days',ds,'rounds'), orderBy('createdAt','asc'));
-    const snap = await getDocs(qRef);
-    snap.forEach(doc=>{
-      const r=doc.data();
-      if(r.deleted) return;
-      allRounds.push({date: ds, ...r});
-    });
+  try{
+    for (const ds of days){
+      const qRef = query(collection(db,'days',ds,'rounds'), orderBy('createdAt','asc'));
+      const snap = await getDocs(qRef);
+      snap.forEach(doc=>{
+        const r=doc.data();
+        if(r.deleted) return;
+        allRounds.push({date: ds, ...r});
+      });
+    }
+  }catch(err){
+    console.error(err);
+    showMsg('Error leyendo Firestore. ¿Reglas de lectura? ¿Conexión?');
+    return;
+  }
+
+  if(allRounds.length===0){
+    showMsg('Sin datos en el rango seleccionado.');
+  } else {
+    clearMsg();
   }
 
   // Agregaciones
   let totalUnits=0,totalAmount=0; const users=new Set();
   const byUser = {}; const byDrink={}; const byDay={}; const rounds=[];
   for(const r of allRounds){
-    // totales de la ronda
     let u=0,a=0;
     for(const k of Object.keys(D)){
       const q = r.items?.[k]||0;
@@ -178,20 +199,13 @@ async function load(){
     }
     totalUnits+=u; totalAmount+=a;
     if(r.displayName) users.add(r.displayName);
-    // por usuario
     const user = r.displayName||'¿?';
     byUser[user] = byUser[user]||{qty:0,amt:0};
     byUser[user].qty += u; byUser[user].amt += a;
-    // por día
     byDay[r.date] = byDay[r.date]||{qty:0,amt:0};
     byDay[r.date].qty += u; byDay[r.date].amt += a;
-    // detalle de rondas
     const ts = r.createdAt?.toDate ? r.createdAt.toDate() : new Date();
-    rounds.push({
-      date: r.date,
-      time: ts.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
-      user: user, units: u, amount: a
-    });
+    rounds.push({ date: r.date, time: ts.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}), user, units:u, amount:a });
   }
 
   // KPIs
@@ -203,32 +217,17 @@ async function load(){
   // Tablas
   const tbodyUser = document.querySelector('#byUser tbody'); tbodyUser.innerHTML='';
   Object.entries(byUser).sort((a,b)=>b[1].amt - a[1].amt).forEach(([name,v])=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${name}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
-    tbodyUser.appendChild(tr);
+    const tr=document.createElement('tr'); tr.innerHTML=`<td>${name}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`; tbodyUser.appendChild(tr);
   });
 
   const tbodyDrink = document.querySelector('#byDrink tbody'); tbodyDrink.innerHTML='';
-  Object.keys(D).forEach(k=>{
-    const v=byDrink[k]; if(!v) return;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${D[k].label}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
-    tbodyDrink.appendChild(tr);
-  });
+  Object.keys(D).forEach(k=>{ const v=byDrink[k]; if(!v) return; const tr=document.createElement('tr'); tr.innerHTML=`<td>${D[k].label}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`; tbodyDrink.appendChild(tr); });
 
   const tbodyDay = document.querySelector('#byDay tbody'); tbodyDay.innerHTML='';
-  Object.entries(byDay).sort(([da],[db])=> da<db ? -1: 1).forEach(([d,v])=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${d}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`;
-    tbodyDay.appendChild(tr);
-  });
+  Object.entries(byDay).sort(([da],[db])=> da<db ? -1: 1).forEach(([d,v])=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${d}</td><td>${v.qty}</td><td>${money(v.amt)}</td>`; tbodyDay.appendChild(tr); });
 
   const tbodyRounds = document.querySelector('#rounds tbody'); tbodyRounds.innerHTML='';
-  rounds.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.date}</td><td>${r.time}</td><td>${r.user}</td><td>${r.units}</td><td>${money(r.amount)}</td>`;
-    tbodyRounds.appendChild(tr);
-  });
+  rounds.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.date}</td><td>${r.time}</td><td>${r.user}</td><td>${r.units}</td><td>${money(r.amount)}</td>`; tbodyRounds.appendChild(tr); });
 
   // Pie (€ por bebida)
   const used = Object.entries(byDrink).map(([k,v])=>({key:k, ...v})).filter(x=>x.amt>0);
@@ -258,12 +257,12 @@ async function load(){
   }
 }
 
-// init rango = Hoy
+// init rango = Este mes
 (function init(){
-  const t=todayLocal(); fromDate.value=fmt(t); toDate.value=fmt(t);
+  const s=monthStart(), e=todayLocal();
+  fromDate.value=fmtLocal(s); toDate.value=fmtLocal(e);
   setRangeUI(); load();
 })();
 </script>
 </body>
 </html>
-
