@@ -78,6 +78,9 @@
     .rounds{display:flex;flex-direction:column;gap:8px}
     .round{display:flex;justify-content:space-between;align-items:center;background:var(--soft-bg);border:1px solid var(--soft-border);padding:10px;border-radius:12px}
     .round small{color:var(--muted)}
+    .round-details{margin-top:8px;padding:8px;border-radius:10px;background:var(--panel);border:1px solid var(--card-border);font-size:14px}
+    .round-details .item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--soft-border)}
+    .round-details .item:last-child{border-bottom:0}
 
     .totals{display:grid;gap:8px}
     .total-line{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:var(--soft-bg);border:1px solid var(--soft-border)}
@@ -176,7 +179,7 @@
 
     <footer>
       Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore<br/>
-      Creado por Chatty y Nick v2.4
+      Creado por Chatty y Nick v2.1
     </footer>
   </div>
 
@@ -281,16 +284,37 @@
         const {units,amount}=calcRoundTotals(r.items);
         const time=new Date(r.ts||Date.now()).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
         const div=document.createElement('div'); div.className='round';
+        // Construir detalle (solo items consumidos)
+        const used = DRINKS.map(d=>({d, q:(r.items[d.key]||0)})).filter(x=>x.q>0);
+        const detailsHTML = used.map(x=>`<div class=\"item\"><span>${x.d.label}</span><strong>${x.q} · ${money(x.q * x.d.price)} €</strong></div>`).join('') || '<div class="muted">Sin consumo</div>';
         div.innerHTML=`
           <div>
             <strong>Ronda ${i+1}</strong> <small>· ${time}</small>
             <div class="muted">${units} uds · ${money(amount)} € · ${(r.displayName||'Usr?')}</div>
+            <div id="details-${i}" class="round-details" style="display:none">${detailsHTML}</div>
           </div>
           <div class="row">
+            <button class="btn" data-action="details" data-i="${i}">👁️</button>
             <button class="btn" data-action="softdel" data-i="${i}" style="color:var(--danger)">✕</button>
           </div>`;
         roundsListEl.appendChild(div);
       });
+      roundsListEl.querySelectorAll('button').forEach(b=>{
+        b.addEventListener('click', async e=>{
+          const i=+e.currentTarget.dataset.i; const action=e.currentTarget.dataset.action; const r=list[i]; if(!r) return;
+          if(action==='details'){
+            const el = document.getElementById('details-'+i);
+            if(el){ el.style.display = el.style.display==='none' ? 'block' : 'none'; }
+            return;
+          }
+          if(action==='softdel'){
+            if(!confirm('¿Seguro que quieres eliminar esta ronda?')) return;
+            try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:nameSelect.value }); }
+            catch(err){ showError('No se pudo borrar'); console.error(err); }
+          }
+        });
+      });
+    }
       roundsListEl.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', async e=>{
           const i=+e.currentTarget.dataset.i; const r=list[i]; if(!r) return;
@@ -320,7 +344,7 @@
       const size=240, r=100, cx=120, cy=120; let acc=0;
       const arcs = used.map((s)=>{ const val=s.amt; const frac=val/total; const angle=frac*2*Math.PI; const x1=cx + r*Math.cos(acc); const y1=cy + r*Math.sin(acc); const acc2=acc+angle; const x2=cx + r*Math.cos(acc2); const y2=cy + r*Math.sin(acc2); const large= angle>Math.PI ? 1:0; const path=`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`; const color=palette[s.key]||'#38bdf8'; acc=acc2; return {path,color,s}; });
       const svgParts = arcs.map(a=>`<path d="${a.path}" fill="${a.color}" stroke="#fff" stroke-width="2"/>`).join('');
-      const legend = used.map(s=>`<div class=\"total-line\"><span><span style=\\\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\\\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      const legend = used.map(s=>`<div class=\"total-line\"><span><span style=\\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
       dashboardEl.innerHTML = `
         <div class="dashboard-grid">
           <div class="dashboard-legend">${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div>
