@@ -6,60 +6,346 @@
   <title>Jayena – Registro de Bebidas (viernes)</title>
   <meta name="theme-color" content="#0ea5e9" />
   <style>
+    /* ===== CSS variables (light by default) ===== */
     :root{
       --bg:#f7f7fb; --panel:#ffffff; --muted:#6b7280; --text:#111827; --accent:#0ea5e9; --accent-2:#38bdf8; --ok:#10b981; --danger:#ef4444; --shadow:0 10px 30px rgba(0,0,0,.08); --radius:18px;
+      --card-border: rgba(17,24,39,.08);
+      --soft-bg: rgba(148,163,184,.07);
+      --soft-border: rgba(148,163,184,.20);
+      --chip-bg: rgba(56,189,248,.12);
+      --chip-brd: rgba(56,189,248,.5);
+      --btn-bg: rgba(148,163,184,.12);
+      --btn-bg-h: rgba(148,163,184,.18);
+      --btn-ghost-brd: rgba(148,163,184,.35);
+      --btn-circle-bg:#f3f4f6; --btn-circle-brd: rgba(17,24,39,.12); --btn-circle-h:#e5e7eb;
     }
-    @media (prefers-color-scheme: dark) {
-      :root{
-        --bg:#111827; --panel:#1f2937; --muted:#9ca3af; --text:#f9fafb; --accent:#38bdf8; --accent-2:#0ea5e9; --ok:#34d399; --danger:#f87171; --shadow:0 10px 30px rgba(0,0,0,.6);
-      }
-      body{background:radial-gradient(1200px 800px at 70% -20%, #0f172a 0%, transparent 60%),radial-gradient(900px 700px at -10% 10%, #1e293b 0%, transparent 55%),var(--bg);} 
-      .card{background:linear-gradient(180deg,var(--panel),rgba(31,41,55,.98)); border:1px solid rgba(255,255,255,.1)}
-      .drink{background:var(--panel)}
-      .round{background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15)}
-      .total-line{background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15)}
+    /* Dark theme via data-theme attribute */
+    [data-theme="dark"]{
+      --bg:#111827; --panel:#1f2937; --muted:#9ca3af; --text:#f9fafb; --accent:#38bdf8; --accent-2:#0ea5e9; --ok:#34d399; --danger:#f87171; --shadow:0 10px 30px rgba(0,0,0,.6);
+      --card-border: rgba(255,255,255,.12);
+      --soft-bg: rgba(255,255,255,.05);
+      --soft-border: rgba(255,255,255,.15);
+      --chip-bg: rgba(56,189,248,.15);
+      --chip-brd: rgba(56,189,248,.5);
+      --btn-bg: rgba(148,163,184,.18);
+      --btn-bg-h: rgba(148,163,184,.28);
+      --btn-ghost-brd: rgba(148,163,184,.45);
+      --btn-circle-bg:#374151; --btn-circle-brd: rgba(255,255,255,.18); --btn-circle-h:#4b5563;
     }
+
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;background:radial-gradient(1200px 800px at 70% -20%,#dff5ff 0%,transparent 60%),radial-gradient(900px 700px at -10% 10%,#f3f7ff 0%,transparent 55%),var(--bg);color:var(--text)}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;}
+    body{background:radial-gradient(1200px 800px at 70% -20%, #dff5ff 0%, transparent 60%),radial-gradient(900px 700px at -10% 10%, #f3f7ff 0%, transparent 55%),var(--bg);color:var(--text)}
+    [data-theme="dark"] body{background:radial-gradient(1200px 800px at 70% -20%, #0f172a 0%, transparent 60%),radial-gradient(900px 700px at -10% 10%, #1e293b 0%, transparent 55%),var(--bg)}
+
     .wrap{max-width:900px;margin:0 auto;padding:clamp(12px,3vw,24px)}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
     .title{display:flex;align-items:center;gap:10px}
     .title h1{font-size:clamp(18px,4.5vw,28px);margin:0}
-    .pill{background:rgba(56,189,248,.12);border:1px dashed rgba(56,189,248,.5);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--accent)}
-    .card{background:linear-gradient(180deg,#fff,rgba(255,255,255,.98));border:1px solid rgba(17,24,39,.08);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    .pill{background:var(--chip-bg);border:1px dashed var(--chip-brd);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--accent)}
+    .btn-toggle{padding:6px 10px;border-radius:12px;background:var(--btn-bg);cursor:pointer;font-size:14px}
+
+    .card{background:linear-gradient(180deg,var(--panel),rgba(255,255,255,.98));border:1px solid var(--card-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    [data-theme="dark"] .card{background:linear-gradient(180deg,var(--panel),rgba(31,41,55,.98))}
+
     .grid{display:grid;gap:12px}
     @media(min-width:720px){.grid.cols-2{grid-template-columns:1fr 1fr}}
     .section-title{font-weight:700;margin:8px 0 10px 2px;opacity:.9}
+
     .row{display:flex;align-items:center;gap:10px}
     .row.wrap{flex-wrap:wrap}
     label{font-size:14px;color:var(--muted)}
-    select{background:#fff;color:var(--text);border:1px solid rgba(17,24,39,.12);padding:10px 12px;border-radius:12px;outline:none;font-size:14px;box-shadow:inset 0 1px 0 rgba(0,0,0,.02)}
+    select{background:#fff;color:var(--text);border:1px solid var(--card-border);padding:10px 12px;border-radius:12px;outline:none;font-size:14px;box-shadow:inset 0 1px 0 rgba(0,0,0,.02)}
+    [data-theme="dark"] select{background:#111827}
     button{border:0;cursor:pointer}
-    .btn{background:rgba(148,163,184,.12);color:var(--text);padding:10px 12px;border-radius:12px;font-weight:600}
-    .btn:hover{background:rgba(148,163,184,.18)}
+    .btn{background:var(--btn-bg);color:var(--text);padding:10px 12px;border-radius:12px;font-weight:600}
+    .btn:hover{background:var(--btn-bg-h)}
     .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#00131a}
     .btn-primary:hover{filter:brightness(1.05)}
-    .btn-ghost{background:transparent;border:1px dashed rgba(148,163,184,.35)}
+    .btn-ghost{background:transparent;border:1px dashed var(--btn-ghost-brd)}
+
     .drinks{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
     @media(min-width:560px){.drinks{grid-template-columns:repeat(3,1fr)}}
-    .drink{background:#fff;border:1px solid rgba(17,24,39,.08);border-radius:16px;padding:10px;display:grid;gap:8px}
+    .drink{background:var(--panel);border:1px solid var(--card-border);border-radius:16px;padding:10px;display:grid;gap:8px}
     .drink h3{margin:0;font-size:16px}
     .muted{color:var(--muted);font-size:12px}
     .qty{display:flex;align-items:center;justify-content:space-between;gap:8px}
-    .qty input{width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:#fff;border:1px solid rgba(17,24,39,.18);color:var(--text);font-weight:700}
-    .btn-circle{width:40px;height:40px;border-radius:12px;font-size:22px;display:grid;place-items:center;background:#f3f4f6;border:1px solid rgba(17,24,39,.12)}
-    .btn-circle:hover{background:#e5e7eb}
+    .qty input{width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:#fff;border:1px solid var(--card-border);color:var(--text);font-weight:700}
+    [data-theme="dark"] .qty input{background:#111827}
+    .btn-circle{width:40px;height:40px;border-radius:12px;font-size:22px;display:grid;place-items:center;background:var(--btn-circle-bg);border:1px solid var(--btn-circle-brd)}
+    .btn-circle:hover{background:var(--btn-circle-h)}
+
     .rounds{display:flex;flex-direction:column;gap:8px}
-    .round{display:flex;justify-content:space-between;align-items:center;background:rgba(148,163,184,.07);border:1px solid rgba(148,163,184,.2);padding:10px;border-radius:12px}
+    .round{display:flex;justify-content:space-between;align-items:center;background:var(--soft-bg);border:1px solid var(--soft-border);padding:10px;border-radius:12px}
     .round small{color:var(--muted)}
+
     .totals{display:grid;gap:8px}
-    .total-line{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:rgba(148,163,184,.07);border:1px solid rgba(148,163,184,.2)}
+    .total-line{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:var(--soft-bg);border:1px solid var(--soft-border)}
+
     footer{opacity:.7;font-size:12px;margin-top:18px;text-align:center}
     a{color:var(--accent)}
     .banner{margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fff0f0;color:#7f1d1d;display:none}
+    [data-theme="dark"] .banner{background:#451a1a;color:#fecaca;border-color:#7f1d1d}
   </style>
 </head>
 <body>
-  <!-- resto del código igual que antes -->
+  <div class="wrap">
+    <header>
+      <div class="title"><h1>Jayena – Registro de Bebidas</h1></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span id="fridayBadge" class="pill">Viernes en Jayena</span>
+        <button id="themeToggle" class="btn-toggle" title="Cambiar tema">🌙</button>
+      </div>
+    </header>
+
+    <div id="errBanner" class="banner">No se pudo conectar a Firestore. Revisa la red o vuelve a cargar.</div>
+
+    <!-- FECHA + USUARIO -->
+    <div class="card grid cols-2" style="gap:14px">
+      <div class="row wrap">
+        <div>
+          <div class="section-title">Fecha</div>
+          <select id="dateSelect"></select>
+        </div>
+        <div>
+          <div class="section-title">Usuario</div>
+          <select id="nameSelect">
+            <option value="Ale">Ale</option>
+            <option value="Nick">Nick</option>
+            <option value="Flor">Flor</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Ronda actual</div>
+    <div class="drinks" id="drinks"></div>
+
+    <div class="row" style="margin-top:10px;gap:10px">
+      <button class="btn-primary btn" id="closeRoundBtn">Cerrar ronda y sumar</button>
+      <button class="btn btn-ghost" id="clearRoundBtn">Limpiar ronda</button>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="section-title">Rondas del día</div>
+      <div id="roundsList" class="rounds"></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card totals">
+        <div class="section-title">Total del día</div>
+        <div class="total-line"><span>Unidades totales</span><strong id="unitsTotal">0</strong></div>
+        <div class="total-line"><span>Importe total (€)</span><strong id="amountTotal">0,00</strong></div>
+      </div>
+      <div class="card totals">
+        <div class="section-title">Entre cuántas personas</div>
+        <div class="row">
+          <label for="people">Personas</label>
+          <select id="people"></select>
+        </div>
+        <div class="total-line"><span>Precio por persona (€)</span><strong id="perPerson">0,00</strong></div>
+        <div class="row" style="margin-top:6px">
+          <label for="multiplier">Multiplicar por</label>
+          <select id="multiplier"></select>
+        </div>
+        <div class="total-line"><span>Precio individual × multiplicador (€)</span><strong id="perPersonMultiplied">0,00</strong></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="section-title">Dashboard del día</div>
+      <div id="dashboard"></div>
+    </div>
+
+    <footer>
+      Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore<br/>
+      Creado por Chatty y Nick v2.1
+    </footer>
+  </div>
+
+  <!-- ===== App Script ===== -->
+  <script type="module">
+    // Theme toggle (auto + manual persistido)
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    function applyTheme(t){ root.setAttribute('data-theme', t); localStorage.setItem('theme',t); themeBtn.textContent = t==='dark'?'☀️':'🌙'; }
+    (function initTheme(){ const saved = localStorage.getItem('theme'); if(saved){ applyTheme(saved); } else { const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches; applyTheme(prefersDark?'dark':'light'); }})();
+    themeBtn.addEventListener('click',()=>{ const cur=root.getAttribute('data-theme'); applyTheme(cur==='dark'?'light':'dark'); });
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, Timestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Firebase
+    const firebaseConfig = { apiKey:"AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs", authDomain:"jayena-drinks.firebaseapp.com", projectId:"jayena-drinks", storageBucket:"jayena-drinks.firebasestorage.app", messagingSenderId:"284828851495", appId:"1:284828851495:web:d6bff8d491e42b3fba9d02" };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Data
+    const DRINKS=[
+      {key:'cerveza',label:'🍺 Cerveza',price:1.90},
+      {key:'agua',label:'💧 Agua',price:1.90},
+      {key:'aguaGas',label:'🫧 Agua con gas',price:2.10},
+      {key:'gaseosa',label:'🥤 Gaseosa',price:2.10},
+      {key:'vino',label:'🍷 Vino',price:2.10}
+    ];
+
+    // UI refs
+    const drinksEl=document.getElementById('drinks');
+    const roundsListEl=document.getElementById('roundsList');
+    const dateSelect=document.getElementById('dateSelect');
+    const fridayBadge=document.getElementById('fridayBadge');
+    const errBanner=document.getElementById('errBanner');
+    const unitsTotalEl=document.getElementById('unitsTotal');
+    const amountTotalEl=document.getElementById('amountTotal');
+    const perPersonEl=document.getElementById('perPerson');
+    const perPersonMultipliedEl=document.getElementById('perPersonMultiplied');
+    const peopleSelect=document.getElementById('people');
+    const multiplierSelect=document.getElementById('multiplier');
+    const closeRoundBtn=document.getElementById('closeRoundBtn');
+    const clearRoundBtn=document.getElementById('clearRoundBtn');
+    const nameSelect=document.getElementById('nameSelect');
+    const dashboardEl=document.getElementById('dashboard');
+
+    // Identity
+    const CLIENT_ID_KEY='jayena-client-id';
+    let clientId=localStorage.getItem(CLIENT_ID_KEY);
+    if(!clientId){clientId=(crypto?.randomUUID?.()||Math.random().toString(36).slice(2));localStorage.setItem(CLIENT_ID_KEY,clientId)}
+    const NAME_KEY='jayena-display-name';
+    nameSelect.value = localStorage.getItem(NAME_KEY) || 'Ale';
+    nameSelect.addEventListener('change',()=>{ localStorage.setItem(NAME_KEY, nameSelect.value); });
+
+    // Helpers (fechas locales, no UTC)
+    const fmtDate = (d)=>{ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; };
+    const todayLocalStr = ()=> fmtDate(new Date());
+    const isFriday = d => new Date(d+"T00:00:00").getDay()===5; // local
+    const money = n => (n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // State
+    let currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{});
+    let unsubscribe=null; let remoteRounds=[];
+
+    function showError(msg){ console.error(msg); errBanner.style.display='block'; errBanner.textContent=msg; }
+
+    async function startLive(dateStr){
+      try{
+        if(unsubscribe){unsubscribe();unsubscribe=null}
+        const qRef=query(collection(db,'days',dateStr,'rounds'),orderBy('createdAt','asc'));
+        unsubscribe=onSnapshot(qRef, snap=>{ remoteRounds=snap.docs.map(doc=>({id:doc.id,...doc.data()})); renderAll(); }, err=>{ showError('No se pudo suscribir a Firestore'); console.error(err); });
+      }catch(e){ showError('Firestore no disponible'); }
+    }
+
+    function renderDrinks(){
+      drinksEl.innerHTML='';
+      DRINKS.forEach(d=>{
+        const card=document.createElement('div'); card.className='drink';
+        card.innerHTML=`<h3>${d.label}</h3>
+          <div class="qty">
+            <button class="btn-circle" data-key="${d.key}" data-delta="-1">−</button>
+            <input type="number" min="0" id="inp-${d.key}" value="${currentRound[d.key]||0}"/>
+            <button class="btn-circle" data-key="${d.key}" data-delta="1">+</button>
+          </div>`;
+        drinksEl.appendChild(card);
+      });
+      drinksEl.querySelectorAll('.btn-circle').forEach(btn=>{
+        btn.addEventListener('click',e=>{ const key=e.currentTarget.dataset.key; const delta=parseInt(e.currentTarget.dataset.delta,10); const v=Math.max(0,(currentRound[key]||0)+delta); currentRound[key]=v; document.getElementById('inp-'+key).value=v; });
+      });
+      DRINKS.forEach(d=>{ const inp=document.getElementById('inp-'+d.key); inp.addEventListener('change',()=>{ const v=Math.max(0,parseInt(inp.value||'0',10)); currentRound[d.key]=v; inp.value=v; }); });
+    }
+
+    function calcRoundTotals(items){ let units=0,amount=0; DRINKS.forEach(d=>{ const q=items[d.key]||0; units+=q; amount+=q*d.price; }); return {units,amount}; }
+
+    function renderRounds(day){
+      roundsListEl.innerHTML='';
+      const list=day.rounds;
+      if(!list.length){ const empty=document.createElement('div'); empty.className='muted'; empty.textContent='Sin rondas todavía.'; roundsListEl.appendChild(empty); return; }
+      list.forEach((r,i)=>{
+        const {units,amount}=calcRoundTotals(r.items);
+        const time=new Date(r.ts||Date.now()).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+        const div=document.createElement('div'); div.className='round';
+        div.innerHTML=`
+          <div>
+            <strong>Ronda ${i+1}</strong> <small>· ${time}</small>
+            <div class="muted">${units} uds · ${money(amount)} € · ${(r.displayName||'Usr?')}</div>
+          </div>
+          <div class="row">
+            <button class="btn" data-action="softdel" data-i="${i}" style="color:var(--danger)">✕</button>
+          </div>`;
+        roundsListEl.appendChild(div);
+      });
+      roundsListEl.querySelectorAll('button').forEach(b=>{
+        b.addEventListener('click', async e=>{
+          const i=+e.currentTarget.dataset.i; const r=list[i]; if(!r) return;
+          if(!confirm('¿Seguro que quieres eliminar esta ronda?')) return;
+          try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:nameSelect.value }); }
+          catch(err){ showError('No se pudo borrar'); console.error(err); }
+        });
+      });
+    }
+
+    function renderTotals(day){
+      const totals=day.rounds.reduce((acc,r)=>{ const t=calcRoundTotals(r.items); acc.units+=t.units; acc.amount+=t.amount; return acc; },{units:0,amount:0});
+      unitsTotalEl.textContent=String(totals.units);
+      amountTotalEl.textContent=money(totals.amount);
+      const people=parseInt(peopleSelect.value||'1',10); const per=people>0?(totals.amount/people):0; perPersonEl.textContent=money(per);
+      const mult=parseInt(multiplierSelect.value||'1',10); perPersonMultipliedEl.textContent=money(per*mult);
+    }
+
+    // Dashboard: Pie chart con colores fijos por bebida
+    function renderDashboard(day){
+      const sums = DRINKS.map(d=>({ key:d.key, label:d.label, qty:0, amt:0 }));
+      day.rounds.forEach(r=>{ DRINKS.forEach((d,idx)=>{ const q=r.items[d.key]||0; sums[idx].qty+=q; sums[idx].amt+=q*d.price; }); });
+      const used = sums.filter(s=> s.qty>0);
+      if(used.length===0){ dashboardEl.innerHTML = '<div class="muted">Sin consumo todavía.</div>'; return; }
+      const total = used.reduce((a,s)=> a+s.amt, 0);
+      const palette = { cerveza:'#60a5fa', agua:'#34d399', aguaGas:'#a78bfa', gaseosa:'#f59e0b', vino:'#ef4444' };
+      const size=240, r=100, cx=120, cy=120; let acc=0;
+      const arcs = used.map((s)=>{ const val=s.amt; const frac=val/total; const angle=frac*2*Math.PI; const x1=cx + r*Math.cos(acc); const y1=cy + r*Math.sin(acc); const acc2=acc+angle; const x2=cx + r*Math.cos(acc2); const y2=cy + r*Math.sin(acc2); const large= angle>Math.PI ? 1:0; const path=`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`; const color=palette[s.key]||'#38bdf8'; acc=acc2; return {path,color,s}; });
+      const svgParts = arcs.map(a=>`<path d="${a.path}" fill="${a.color}" stroke="#fff" stroke-width="2"/>`).join('');
+      const legend = used.map(s=>`<div class="total-line"><span><span style=\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      dashboardEl.innerHTML = `<div style="display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:center"><svg viewBox="0 0 ${size} ${size}" width="100%" height="100%">${svgParts}</svg><div>${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div></div>`;
+    }
+
+    function renderFriday(dateStr){ const fri=isFriday(dateStr); fridayBadge.style.opacity=fri?1:.5; fridayBadge.textContent=fri?'Viernes en Jayena':'Otro día (no viernes)'; }
+
+    function renderAll(){
+      const date=dateSelect.value;
+      const visible=remoteRounds.filter(r=>!r.deleted);
+      const day={ date, rounds: visible.map(r=>({ id:r.id, items:r.items||{}, displayName:r.displayName, ts:r.createdAt?.toMillis?.() ?? Date.now() })) };
+      renderFriday(day.date); renderDrinks(); renderRounds(day); renderTotals(day); renderDashboard(day);
+    }
+
+    // Events
+    dateSelect.addEventListener('change', ()=> startLive(dateSelect.value));
+    closeRoundBtn.addEventListener('click', async ()=>{ const total=Object.values(currentRound).reduce((a,b)=>a+(b||0),0); if(total===0) return; try{ await addDoc(collection(db,'days',dateSelect.value,'rounds'), { items:{...currentRound}, clientId, displayName:nameSelect.value, createdAt:Timestamp.now() }); currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{}); renderDrinks(); }catch(err){ showError('Error al guardar la ronda'); console.error(err); }});
+    clearRoundBtn.addEventListener('click', ()=>{ currentRound=DRINKS.reduce((a,d)=>(a[d.key]=0,a),{}); renderDrinks(); });
+
+    // People & multiplier
+    for(let i=1;i<=9;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); peopleSelect.appendChild(o); }
+    for(let i=1;i<=5;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); multiplierSelect.appendChild(o); }
+    peopleSelect.addEventListener('change', renderAll); multiplierSelect.addEventListener('change', renderAll);
+
+    // Populate dates: últimos 180 días hasta fin de 2025 (local, no UTC)
+    function populateDateOptions(rangePast=180){
+      dateSelect.innerHTML='';
+      const today = new Date(); today.setHours(0,0,0,0);
+      const endOfYear = new Date(2025,11,31); endOfYear.setHours(0,0,0,0);
+      const ms=86400000; const rangeFuture=Math.max(0,Math.round((endOfYear - today)/ms));
+      for(let off=-rangePast; off<=rangeFuture; off++){
+        const d = new Date(today); d.setDate(today.getDate()+off);
+        const value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const label = d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+        const opt = document.createElement('option'); opt.value=value; opt.textContent=label + (d.getDay()===5?' · viernes':'');
+        dateSelect.appendChild(opt);
+      }
+    }
+
+    // Init
+    populateDateOptions();
+    dateSelect.value = todayLocalStr(); // asegura HOY
+    startLive(dateSelect.value);
+    renderAll();
+  </script>
 </body>
 </html>
