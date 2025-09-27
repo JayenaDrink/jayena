@@ -6,6 +6,7 @@
   <title>Jayena – Admin</title>
   <style>
     :root{--bg:#f7f7fb;--panel:#fff;--muted:#6b7280;--text:#111827;--accent:#0ea5e9;--brd:rgba(17,24,39,.12)}
+    [data-theme="dark"]{--bg:#0f172a;--panel:#0b1220;--muted:#9ca3af;--text:#e5e7eb;--accent:#38bdf8;--brd:rgba(255,255,255,.15)}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell; background:var(--bg);color:var(--text)}
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -13,7 +14,8 @@
     .grid{display:grid;gap:12px}
     @media(min-width:900px){.grid.cols-2{grid-template-columns:1.2fr .8fr}}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    select,input,button{padding:8px 10px;border:1px solid var(--brd);border-radius:10px;background:#fff}
+    select,input,button{padding:8px 10px;border:1px solid var(--brd);border-radius:10px;background:#fff;color:var(--text)}
+    [data-theme="dark"] select,[data-theme="dark"] input,[data-theme="dark"] button{background:#0f172a;color:var(--text)}
     button{cursor:pointer;font-weight:600}
     h1{margin:0;font-size:20px}
     h2{margin:8px 0 4px 0;font-size:18px}
@@ -23,11 +25,15 @@
     .muted{color:var(--muted)}
     .pill{background:rgba(56,189,248,.12);border:1px dashed rgba(56,189,248,.35);color:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px}
     .totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    @media(min-width:700px){.totals{grid-template-columns:repeat(4,1fr)}}
-    .kpi{background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px}
+    .kpi{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:10px}
     .kpi strong{font-size:18px}
     .chart{width:100%;max-width:520px}
     #msg{display:none;margin-bottom:10px;padding:10px;border-radius:10px;background:#fff0f0;border:1px solid rgba(239,68,68,.35);color:#7f1d1d}
+    [data-theme="dark"] #msg{background:#2c1a1a;border-color:#7f1d1d;color:#fecaca}
+    /* Leyenda de colores para el pie */
+    #legend{display:grid;gap:6px;margin-top:6px}
+    .legend-item{display:flex;align-items:center;gap:8px;font-size:14px}
+    .legend-item .swatch{width:12px;height:12px;border-radius:3px;border:1px solid var(--brd)}
   </style>
 </head>
 <body>
@@ -47,6 +53,9 @@
       <input id="toDate" type="date" style="display:none"/>
       <button id="reloadBtn">Actualizar</button>
     </div>
+      <div class="row">
+      <button id="themeToggle" title="Cambiar tema">🌙</button>
+    </div>
   </header>
 
   <div id="msg"></div>
@@ -56,6 +65,8 @@
       <h2>Resumen</h2>
       <div class="totals">
         <div class="kpi"><div class="muted">Unidades totales</div><strong id="kpiUnits">0</strong></div>
+        <div class="kpi"><div class="muted">Importe total (€)</div><strong id="kpiAmount">0,00</strong></div>
+      </div><strong id="kpiUnits">0</strong></div>
         <div class="kpi"><div class="muted">Importe total (€)</div><strong id="kpiAmount">0,00</strong></div>
         <div class="kpi"><div class="muted">Rondas</div><strong id="kpiRounds">0</strong></div>
         <div class="kpi"><div class="muted">Usuarios (distintos)</div><strong id="kpiUsers">0</strong></div>
@@ -211,8 +222,8 @@ async function load(){
   // KPIs
   document.getElementById('kpiUnits').textContent = String(totalUnits);
   document.getElementById('kpiAmount').textContent = money(totalAmount);
-  document.getElementById('kpiRounds').textContent = String(allRounds.length);
-  document.getElementById('kpiUsers').textContent  = String(users.size);
+  
+  
 
   // Tablas
   const tbodyUser = document.querySelector('#byUser tbody'); tbodyUser.innerHTML='';
@@ -249,7 +260,8 @@ async function load(){
 
       const d = D[x.key];
       const div=document.createElement('div');
-      div.innerHTML = `${d.label}: <strong>${money(x.amt)} €</strong> (${x.qty} uds)`;
+      div.className='legend-item';
+      div.innerHTML = `<span class="swatch" style="background:${color}"></span>${d.label}: <strong>${money(x.amt)} €</strong> (${x.qty} uds)`;
       document.getElementById('legend').appendChild(div);
     });
   } else {
@@ -263,6 +275,13 @@ async function load(){
   fromDate.value=fmtLocal(s); toDate.value=fmtLocal(e);
   setRangeUI(); load();
 })();
+</script>
+<script>
+  (function(){
+    const root=document.documentElement; function apply(t){root.setAttribute('data-theme',t); localStorage.setItem('admin-theme',t); const b=document.getElementById('themeToggle'); if(b) b.textContent = t==='dark'?'☀️':'🌙';}
+    const saved=localStorage.getItem('admin-theme'); if(saved){apply(saved);} else { apply(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'); }
+    window.addEventListener('DOMContentLoaded',()=>{ const b=document.getElementById('themeToggle'); b&&b.addEventListener('click',()=>{ apply(root.getAttribute('data-theme')==='dark'?'light':'dark'); }); });
+  })();
 </script>
 </body>
 </html>
