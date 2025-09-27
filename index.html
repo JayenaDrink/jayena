@@ -78,6 +78,7 @@
 
     footer{opacity:.7;font-size:12px;margin-top:18px;text-align:center}
     a{color:var(--accent)}
+    .banner{margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fff0f0;color:#7f1d1d;display:none}
   </style>
 </head>
 <body>
@@ -93,12 +94,13 @@
       <span id="fridayBadge" class="pill">Viernes en Jayena</span>
     </header>
 
+    <div id="errBanner" class="banner">No se pudo conectar a Firestore. Revisa la red o vuelve a cargar.</div>
+
     <!-- FECHA + ACCIONES -->
     <div class="card grid cols-2" style="gap:14px">
       <div class="row wrap">
         <div>
           <div class="section-title">Fecha</div>
-          <!-- Desplegable de fecha -->
           <select id="dateSelect"></select>
         </div>
         <div>
@@ -113,7 +115,6 @@
       </div>
     </div>
 
-    <!-- BEBIDAS -->
     <div class="section-title">Ronda actual</div>
     <div class="drinks" id="drinks"></div>
 
@@ -122,13 +123,11 @@
       <button class="btn btn-ghost" id="clearRoundBtn">Limpiar ronda</button>
     </div>
 
-    <!-- LISTA DE RONDAS DEL DÍA -->
     <div class="card" style="margin-top:14px">
       <div class="section-title">Rondas del día</div>
       <div id="roundsList" class="rounds"></div>
     </div>
 
-    <!-- TOTALES Y DIVISORES -->
     <div class="grid cols-2" style="margin-top:14px">
       <div class="card totals">
         <div class="section-title">Total del día</div>
@@ -151,15 +150,16 @@
     </div>
 
     <footer>
-      Hecho para los viernes en Jayena 🍻 · Guarda datos por fecha en la nube (Firestore) y en tu dispositivo (algunos ajustes)
+      Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore
     </footer>
   </div>
 
-  <!-- Firebase SDK (módulo) expone globals para el script principal -->
+  <!-- Script ÚNICO como módulo: importa Firebase y ejecuta la app -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+    // --- Config Firebase ---
     const firebaseConfig = {
       apiKey: "AIzaSyD1EW9ARFqGsxxd0Ska4GiItKERayouuVs",
       authDomain: "jayena-drinks.firebaseapp.com",
@@ -171,12 +171,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    // Exponer todo lo necesario al script no-módulo
-    window.__fire = { db, collection, addDoc, onSnapshot, query, orderBy, Timestamp };
-  </script>
 
-  <script>
-  ;(()=>{
+    // --- App ---
     const DRINKS = [
       { key:'cerveza', label:'🍺 Cerveza', price:1.90 },
       { key:'agua', label:'💧 Agua', price:1.90 },
@@ -185,11 +181,12 @@
       { key:'vino', label:'🍷 Vino', price:2.10 },
     ];
 
-    // UI Elements
+    // UI refs
     const drinksEl = document.getElementById('drinks');
     const roundsListEl = document.getElementById('roundsList');
     const dateSelect = document.getElementById('dateSelect');
     const fridayBadge = document.getElementById('fridayBadge');
+    const errBanner = document.getElementById('errBanner');
 
     const unitsTotalEl = document.getElementById('unitsTotal');
     const amountTotalEl = document.getElementById('amountTotal');
@@ -206,47 +203,42 @@
     const importBtn = document.getElementById('importBtn');
     const importFile = document.getElementById('importFile');
 
-    // Firestore (globals del script módulo)
-    const { db, collection, addDoc, onSnapshot, query, orderBy, Timestamp: FB_Timestamp } = window.__fire || {};
-
     // Helpers
     const todayStr = ()=> new Date().toISOString().slice(0,10);
-    const isFriday = d => new Date(d+"T00:00:00").getDay() === 5; // 5 = Friday
-
+    const isFriday = d => new Date(d+"T00:00:00").getDay() === 5;
     const money = n => (n||0).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2});
 
-    // State and persistence (compat)
-    const STORAGE_KEY = 'jayena-drinks-v1';
-    const readAll = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
-    const writeAll = (obj) => localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-
-    // Identificador de cliente
+    // clientId
     const CLIENT_ID_KEY = 'jayena-client-id';
     let clientId = localStorage.getItem(CLIENT_ID_KEY);
-    if (!clientId) {
-      clientId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Math.random()).slice(2);
-      localStorage.setItem(CLIENT_ID_KEY, clientId);
-    }
+    if (!clientId) { clientId = (crypto?.randomUUID?.()||Math.random().toString(36).slice(2)); localStorage.setItem(CLIENT_ID_KEY, clientId); }
 
-    // Ronda actual (no persistida hasta cerrar)
-    let currentRound = DRINKS.reduce((acc,d)=>{acc[d.key]=0; return acc;},{});
-
-    // Estado remoto
+    // State
+    let currentRound = DRINKS.reduce((a,d)=> (a[d.key]=0,a),{});
     let unsubscribe = null;
     let remoteRounds = [];
 
-    async function startLive(dateStr){
-      if (!db) { console.warn('Firestore no disponible'); return; }
-      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-      const roundsRef = collection(db, 'days', dateStr, 'rounds');
-      const q = query(roundsRef, orderBy('createdAt','asc'));
-      unsubscribe = onSnapshot(q, snap => {
-        remoteRounds = snap.docs.map(doc => doc.data());
-        renderAll();
-      });
+    function showError(msg){
+      console.error(msg);
+      errBanner.style.display='block';
+      errBanner.textContent = msg;
     }
 
-    // Build drinks controls
+    async function startLive(dateStr){
+      try{
+        if (unsubscribe) { unsubscribe(); unsubscribe=null; }
+        const roundsRef = collection(db, 'days', dateStr, 'rounds');
+        const q = query(roundsRef, orderBy('createdAt','asc'));
+        unsubscribe = onSnapshot(q, snap => {
+          remoteRounds = snap.docs.map(doc => doc.data());
+          renderAll();
+        }, err => {
+          showError('No se pudo suscribir a Firestore');
+          console.error(err);
+        });
+      }catch(e){ showError('Firestore no disponible'); }
+    }
+
     function renderDrinks(){
       drinksEl.innerHTML = '';
       DRINKS.forEach(d => {
@@ -283,9 +275,7 @@
 
     function calcRoundTotals(items){
       let units = 0, amount = 0;
-      DRINKS.forEach(d=>{
-        const q = items[d.key]||0; units += q; amount += q * d.price;
-      });
+      DRINKS.forEach(d=>{ const q = items[d.key]||0; units+=q; amount+= q*d.price; });
       return {units, amount};
     }
 
@@ -309,9 +299,9 @@
             <div class="muted">${units} uds · ${money(amount)} €</div>
           </div>
           <div class="row">
-            <button class="btn" data-action="restore" data-i="${i}" title="Cargar cantidades de esta ronda">↺</button>
-            <button class="btn" data-action="dup" data-i="${i}" title="Duplicar ronda">⧉</button>
-            <button class="btn" data-action="del" data-i="${i}" style="color:var(--danger)" title="Borrar (no permitido)">✕</button>
+            <button class="btn" data-action="restore" data-i="${i}">↺</button>
+            <button class="btn" data-action="dup" data-i="${i}">⧉</button>
+            <button class="btn" data-action="del" data-i="${i}" style="color:var(--danger)">✕</button>
           </div>`;
         roundsListEl.appendChild(div);
       });
@@ -320,40 +310,28 @@
         b.addEventListener('click', async e=>{
           const i = +e.currentTarget.dataset.i;
           const action = e.currentTarget.dataset.action;
-          const r = day.rounds[i];
-          if(!r) return;
-          if(action==='del'){
-            alert('En modo colaborativo no se pueden borrar rondas (reglas de Firestore).');
-          }
-          if(action==='restore'){
-            currentRound = {...r.items}; renderDrinks();
-          }
+          const r = day.rounds[i]; if(!r) return;
+          if(action==='del'){ alert('No se pueden borrar rondas (modo colaborativo)'); }
+          if(action==='restore'){ currentRound = {...r.items}; renderDrinks(); }
           if(action==='dup'){
-            if(!db){ alert('No conectado a Firestore'); return; }
             try{
               const date = dateSelect.value;
               await addDoc(collection(db,'days',date,'rounds'), {
-                items: {...r.items},
-                clientId,
-                createdAt: FB_Timestamp.now()
+                items: {...r.items}, clientId, createdAt: Timestamp.now()
               });
-            }catch(err){ console.error(err); alert('No se pudo duplicar'); }
+            }catch(err){ showError('No se pudo duplicar'); console.error(err); }
           }
         })
       })
     }
 
     function renderTotals(day){
-      const totals = day.rounds.reduce((acc,r)=>{
-        const t = calcRoundTotals(r.items); acc.units+=t.units; acc.amount+=t.amount; return acc;
-      },{units:0,amount:0});
+      const totals = day.rounds.reduce((acc,r)=>{ const t=calcRoundTotals(r.items); acc.units+=t.units; acc.amount+=t.amount; return acc; },{units:0,amount:0});
       unitsTotalEl.textContent = String(totals.units);
       amountTotalEl.textContent = money(totals.amount);
-
       const people = parseInt(peopleSelect.value||'1',10);
       const per = people>0 ? (totals.amount/people) : 0;
       perPersonEl.textContent = money(per);
-
       const mult = parseInt(multiplierSelect.value||'1',10);
       perPersonMultipliedEl.textContent = money(per * mult);
     }
@@ -368,10 +346,7 @@
       const date = dateSelect.value;
       const day = {
         date,
-        rounds: remoteRounds.map(r => ({
-          items: r.items || {},
-          ts: r.createdAt && typeof r.createdAt.toMillis === 'function' ? r.createdAt.toMillis() : Date.now()
-        }))
+        rounds: remoteRounds.map(r => ({ items: r.items || {}, ts: r.createdAt?.toMillis?.() ?? Date.now() }))
       };
       renderFriday(day.date);
       renderDrinks();
@@ -379,96 +354,64 @@
       renderTotals(day);
     }
 
-    // Event wiring
-    dateSelect.addEventListener('change', ()=>{
-      startLive(dateSelect.value);
-    });
+    // Eventos
+    dateSelect.addEventListener('change', ()=>{ startLive(dateSelect.value); });
 
     closeRoundBtn.addEventListener('click', async ()=>{
       const {units} = calcRoundTotals(currentRound);
       if(units===0){ return; }
-      if (!db) { alert('No se pudo conectar a Firestore'); return; }
-      try {
+      try{
         const date = dateSelect.value;
-        await addDoc(collection(db, 'days', date, 'rounds'), {
-          items: { ...currentRound },
-          clientId,
-          createdAt: FB_Timestamp.now()
-        });
-        currentRound = DRINKS.reduce((acc,d)=>{acc[d.key]=0; return acc;}, {});
-      } catch (err) {
-        console.error(err); alert('Error al guardar la ronda');
-      }
+        await addDoc(collection(db,'days',date,'rounds'), { items:{...currentRound}, clientId, createdAt: Timestamp.now() });
+        currentRound = DRINKS.reduce((a,d)=> (a[d.key]=0,a),{});
+      }catch(err){ showError('Error al guardar la ronda'); console.error(err); }
     });
 
-    clearRoundBtn.addEventListener('click', ()=>{
-      currentRound = DRINKS.reduce((acc,d)=>{acc[d.key]=0; return acc;},{});
-      renderDrinks();
-    });
+    clearRoundBtn.addEventListener('click', ()=>{ currentRound = DRINKS.reduce((a,d)=> (a[d.key]=0,a),{}); renderDrinks(); });
+    resetDayBtn.addEventListener('click', ()=>{ alert('No se puede reiniciar el día en modo colaborativo.'); });
 
-    resetDayBtn.addEventListener('click', ()=>{
-      alert('En modo colaborativo no se puede reiniciar el día completo. (Evita borrar datos de otros)');
-    });
-
-    // Exportar: descarga JSON de las rondas visibles (día actual)
+    // Exportar/Importar (día actual)
     exportBtn.addEventListener('click', ()=>{
       const payload = { date: dateSelect.value, rounds: remoteRounds };
       const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `jayena-${payload.date}.json`; a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href=url; a.download=`jayena-${payload.date}.json`; a.click(); URL.revokeObjectURL(url);
     });
 
-    // Importar: agrega rondas (create-only)
     importBtn.addEventListener('click', ()=> importFile.click());
     importFile.addEventListener('change', async (e)=>{
-      const f = e.target.files && e.target.files[0];
-      if(!f) return;
+      const f = e.target.files?.[0]; if(!f) return;
       const reader = new FileReader();
       reader.onload = async ()=>{
         try{
           const obj = JSON.parse(reader.result);
-          const date = (obj && obj.date) ? obj.date : dateSelect.value;
-          const list = Array.isArray(obj.rounds) ? obj.rounds : [];
+          const date = obj?.date || dateSelect.value;
+          const list = Array.isArray(obj?.rounds) ? obj.rounds : [];
           for(const r of list){
-            await addDoc(collection(db,'days',date,'rounds'), {
-              items: r.items || {},
-              clientId,
-              createdAt: FB_Timestamp.now()
-            });
+            await addDoc(collection(db,'days',date,'rounds'), { items: r.items||{}, clientId, createdAt: Timestamp.now() });
           }
           alert('Importado en Firestore.');
-        }catch(err){
-          console.error(err); alert('Archivo no válido');
-        }
+        }catch(err){ showError('Archivo no válido'); console.error(err); }
       };
       reader.readAsText(f);
     });
 
-    // Populate selects (personas y multiplicador)
-    for(let i=1;i<=9;i++){
-      const opt = document.createElement('option'); opt.value=String(i); opt.textContent=String(i); peopleSelect.appendChild(opt);
-    }
-    for(let i=1;i<=5;i++){
-      const opt = document.createElement('option'); opt.value=String(i); opt.textContent=String(i); multiplierSelect.appendChild(opt);
-    }
+    // Selects personas/multiplicador
+    for(let i=1;i<=9;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); peopleSelect.appendChild(o); }
+    for(let i=1;i<=5;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=String(i); multiplierSelect.appendChild(o); }
     peopleSelect.addEventListener('change', ()=> renderAll());
     multiplierSelect.addEventListener('change', ()=> renderAll());
 
-    // Desplegable de fechas (últimos 180 días y resto del año actual)
+    // Fechas (últimos 180 días hasta fin de 2025)
     function populateDateOptions(rangePast=180){
       dateSelect.innerHTML='';
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const endOfYear = new Date(today.getFullYear(), 11, 31);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const endOfYear = new Date(2025, 11, 31);
       endOfYear.setHours(0,0,0,0);
       const msPerDay = 86400000;
       const rangeFuture = Math.max(0, Math.round((endOfYear - today) / msPerDay));
-
       for(let off=-rangePast; off<=rangeFuture; off++){
-        const d = new Date(today);
-        d.setDate(today.getDate()+off);
+        const d = new Date(today); d.setDate(today.getDate()+off);
         const value = d.toISOString().slice(0,10);
         const label = d.toLocaleDateString('es-ES',{weekday:'short', day:'2-digit', month:'short', year:'numeric'});
         const opt = document.createElement('option');
@@ -477,18 +420,17 @@
       }
     }
 
-    // --- Tests mínimos (consola) ---
+    // Tests básicos
     function runTests(){
       try{
         const t = calcRoundTotals({ cerveza:1, vino:2 });
         console.assert(t.units===3, 'calcRoundTotals unidades');
         console.assert(t.amount.toFixed(2)==='6.10', 'calcRoundTotals importe 6.10');
         console.assert(money(6.1)==='6,10', 'money formato es-ES');
-        console.assert(isFriday('2025-09-26')===true, 'isFriday para un viernes conocido');
+        console.assert(isFriday('2025-09-26')===true, 'isFriday viernes');
         const allOnes = calcRoundTotals({cerveza:1,agua:1,aguaGas:1,gaseosa:1,vino:1});
-        console.assert(allOnes.units===5, 'calcRoundTotals 5 unidades');
-        console.assert(allOnes.amount.toFixed(2)==='10.10', 'calcRoundTotals importe 10.10');
-        console.assert(dateSelect.options.length>0, 'populateDateOptions generó opciones');
+        console.assert(allOnes.units===5 && allOnes.amount.toFixed(2)==='10.10', 'totales varias bebidas');
+        console.assert(dateSelect.options.length>0, 'desplegable fechas poblado');
         console.log('✅ Tests OK');
       }catch(e){ console.warn('⚠️ Tests con avisos:', e); }
     }
@@ -499,7 +441,6 @@
     renderAll();
     startLive(dateSelect.value);
     runTests();
-  })();
   </script>
 </body>
 </html>
