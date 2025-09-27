@@ -85,27 +85,18 @@
     .totals{display:grid;gap:8px}
     .total-line{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:var(--soft-bg);border:1px solid var(--soft-border)}
 
-    footer{opacity:.7;font-size:12px;margin-top:18px;text-align:center}
-    a{color:var(--accent)}
-    .banner{margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fff0f0;color:#7f1d1d;display:none}
-    [data-theme="dark"] .banner{background:#451a1a;color:#fecaca;border-color:#7f1d1d}
-      /* Dashboard responsive */
+    /* Dashboard responsive */
     .dashboard-grid{display:grid;gap:12px;align-items:center}
     .dashboard-legend{display:block}
     .dashboard-chartwrap{width:100%;max-width:420px}
     .dashboard-chartwrap svg{width:100%;height:auto}
-    /* Desktop: lista a la izquierda, gráfico a la derecha */
-    @media(min-width:720px){
-      .dashboard-grid{grid-template-columns:1fr 280px}
-      .dashboard-legend{order:1}
-      .dashboard-chartwrap{order:2;justify-self:center}
-    }
-    /* Móvil: primero lista, luego gráfico */
-    @media(max-width:719px){
-      .dashboard-grid{grid-template-columns:1fr}
-      .dashboard-legend{order:1}
-      .dashboard-chartwrap{order:2}
-    }
+    @media(min-width:720px){ .dashboard-grid{grid-template-columns:1fr 280px} .dashboard-legend{order:1} .dashboard-chartwrap{order:2;justify-self:center} }
+    @media(max-width:719px){ .dashboard-grid{grid-template-columns:1fr} .dashboard-legend{order:1} .dashboard-chartwrap{order:2} }
+
+    footer{opacity:.7;font-size:12px;margin-top:18px;text-align:center}
+    a{color:var(--accent)}
+    .banner{margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fff0f0;color:#7f1d1d;display:none}
+    [data-theme="dark"] .banner{background:#451a1a;color:#fecaca;border-color:#7f1d1d}
   </style>
 </head>
 <body>
@@ -183,16 +174,22 @@
     </footer>
   </div>
 
-  <!-- ===== App Script ===== -->
-  <script type="module">
-    // Theme toggle (auto + manual persistido)
-    const root = document.documentElement;
-    const themeBtn = document.getElementById('themeToggle');
-    function applyTheme(t){ root.setAttribute('data-theme', t); localStorage.setItem('theme',t); themeBtn.textContent = t==='dark'?'☀️':'🌙'; }
-    (function initTheme(){ const saved = localStorage.getItem('theme'); if(saved){ applyTheme(saved); } else { const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches; applyTheme(prefersDark?'dark':'light'); }})();
-    themeBtn.addEventListener('click',()=>{ const cur=root.getAttribute('data-theme'); applyTheme(cur==='dark'?'light':'dark'); });
+  <!-- ===== Theme Script (independiente) ===== -->
+  <script>
+    (function(){
+      const root = document.documentElement; const btn = null; // we attach later when DOM loads
+      function applyTheme(t){ root.setAttribute('data-theme', t); localStorage.setItem('theme', t); const b=document.getElementById('themeToggle'); if(b){ b.textContent = t==='dark'?'☀️':'🌙'; } }
+      const saved = localStorage.getItem('theme');
+      if(saved){ applyTheme(saved); } else { const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches; applyTheme(prefersDark?'dark':'light'); }
+      window.__applyTheme = applyTheme; // expose for later toggle
+    })();
+    window.addEventListener('DOMContentLoaded',()=>{
+      const btn = document.getElementById('themeToggle');
+      btn?.addEventListener('click',()=>{ const cur=document.documentElement.getAttribute('data-theme'); window.__applyTheme(cur==='dark'?'light':'dark'); });
+    });
   </script>
 
+  <!-- ===== App Script ===== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, Timestamp, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -284,9 +281,8 @@
         const {units,amount}=calcRoundTotals(r.items);
         const time=new Date(r.ts||Date.now()).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
         const div=document.createElement('div'); div.className='round';
-        // Construir detalle (solo items consumidos)
         const used = DRINKS.map(d=>({d, q:(r.items[d.key]||0)})).filter(x=>x.q>0);
-        const detailsHTML = used.map(x=>`<div class=\"item\"><span>${x.d.label}</span><strong>${x.q} · ${money(x.q * x.d.price)} €</strong></div>`).join('') || '<div class="muted">Sin consumo</div>';
+        const detailsHTML = used.map(x=>`<div class="item"><span>${x.d.label}</span><strong>${x.q} · ${money(x.q * x.d.price)} €</strong></div>`).join('') || '<div class="muted">Sin consumo</div>';
         div.innerHTML=`
           <div>
             <strong>Ronda ${i+1}</strong> <small>· ${time}</small>
@@ -302,25 +298,12 @@
       roundsListEl.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', async e=>{
           const i=+e.currentTarget.dataset.i; const action=e.currentTarget.dataset.action; const r=list[i]; if(!r) return;
-          if(action==='details'){
-            const el = document.getElementById('details-'+i);
-            if(el){ el.style.display = el.style.display==='none' ? 'block' : 'none'; }
-            return;
-          }
+          if(action==='details'){ const el = document.getElementById('details-'+i); if(el){ el.style.display = el.style.display==='none' ? 'block' : 'none'; } return; }
           if(action==='softdel'){
             if(!confirm('¿Seguro que quieres eliminar esta ronda?')) return;
             try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:nameSelect.value }); }
             catch(err){ showError('No se pudo borrar'); console.error(err); }
           }
-        });
-      });
-    }
-      roundsListEl.querySelectorAll('button').forEach(b=>{
-        b.addEventListener('click', async e=>{
-          const i=+e.currentTarget.dataset.i; const r=list[i]; if(!r) return;
-          if(!confirm('¿Seguro que quieres eliminar esta ronda?')) return;
-          try{ await updateDoc(doc(db,'days',dateSelect.value,'rounds',r.id),{ deleted:true, deletedAt:Timestamp.now(), deleter:nameSelect.value }); }
-          catch(err){ showError('No se pudo borrar'); console.error(err); }
         });
       });
     }
@@ -344,12 +327,8 @@
       const size=240, r=100, cx=120, cy=120; let acc=0;
       const arcs = used.map((s)=>{ const val=s.amt; const frac=val/total; const angle=frac*2*Math.PI; const x1=cx + r*Math.cos(acc); const y1=cy + r*Math.sin(acc); const acc2=acc+angle; const x2=cx + r*Math.cos(acc2); const y2=cy + r*Math.sin(acc2); const large= angle>Math.PI ? 1:0; const path=`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`; const color=palette[s.key]||'#38bdf8'; acc=acc2; return {path,color,s}; });
       const svgParts = arcs.map(a=>`<path d="${a.path}" fill="${a.color}" stroke="#fff" stroke-width="2"/>`).join('');
-      const legend = used.map(s=>`<div class=\"total-line\"><span><span style=\\"display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px\\"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
-      dashboardEl.innerHTML = `
-        <div class="dashboard-grid">
-          <div class="dashboard-legend">${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div>
-          <div class="dashboard-chartwrap"><svg viewBox="0 0 ${size} ${size}">${svgParts}</svg></div>
-        </div>`;
+      const legend = used.map(s=>`<div class="total-line"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px"></span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      dashboardEl.innerHTML = `<div class="dashboard-grid"><div class="dashboard-legend">${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div><div class="dashboard-chartwrap"><svg viewBox="0 0 ${size} ${size}">${svgParts}</svg></div></div>`;
     }
 
     function renderFriday(dateStr){ const fri=isFriday(dateStr); fridayBadge.style.opacity=fri?1:.5; fridayBadge.textContent=fri?'Viernes en Jayena':'Otro día (no viernes)'; }
