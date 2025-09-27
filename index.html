@@ -118,7 +118,7 @@
 
     <footer>
       Hecho para los viernes en Jayena 🍻 · Colaborativo en tiempo real con Firestore<br/>
-      Creado por Chatty y Nick v2.4
+      Creado por Chatty y Nick v2.1
     </footer>
   </div>
 
@@ -255,10 +255,12 @@
       if(used.length===0){ dashboardEl.innerHTML = '<div class="muted">Sin consumo todavía.</div>'; return; }
       const total = used.reduce((a,s)=> a+s.amt, 0);
 
-      // Pie geometry
-      const size=220, r=100, cx=110, cy=110, stroke=200; // simple donut
-      let acc=0;
-      const arcs = used.map((s, i)=>{
+      // Paleta fija por bebida para diferenciar segmentos
+      const palette = { cerveza:'#60a5fa', agua:'#34d399', aguaGas:'#a78bfa', gaseosa:'#f59e0b', vino:'#ef4444' };
+
+      // Geometría del pie (donut sencillo con separación)
+      const size=240, r=100, cx=120, cy=120; let acc=0;
+      const arcs = used.map((s)=>{
         const val = s.amt; const frac = val/total; const angle = frac*2*Math.PI;
         const x1 = cx + r*Math.cos(acc);
         const y1 = cy + r*Math.sin(acc);
@@ -267,15 +269,21 @@
         const y2 = cy + r*Math.sin(acc2);
         const large = angle>Math.PI ? 1 : 0;
         const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+        const color = palette[s.key] || '#38bdf8';
         acc = acc2;
-        return { path, label: s.label, value: s.amt };
+        return { path, color, s };
       });
 
-      const svgParts = arcs.map(a=>`<path d="${a.path}" fill="currentColor" opacity="0.85"/>`);
-      const legend = used.map(s=>`<div class="total-line"><span>${s.label} · ${s.qty} uds</span><strong>${money(s.amt)} €</strong></div>`).join('');
+      const svgParts = arcs.map(a=>`<path d="${a.path}" fill="${a.color}" stroke="#fff" stroke-width="2"/>`).join('');
+      const legend = used.map(s=>`
+        <div class="total-line">
+          <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${palette[s.key]||'#38bdf8'};margin-right:8px"></span>${s.label} · ${s.qty} uds</span>
+          <strong>${money(s.amt)} €</strong>
+        </div>`).join('');
+
       dashboardEl.innerHTML = `
-        <div style="display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:center">
-          <svg viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="color:#38bdf8">${svgParts.join('')}</svg>
+        <div style="display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:center">
+          <svg viewBox="0 0 ${size} ${size}" width="100%" height="100%">${svgParts}</svg>
           <div>${legend}<div class="total-line"><span><strong>Total</strong></span><strong>${money(total)} €</strong></div></div>
         </div>`;
     }
